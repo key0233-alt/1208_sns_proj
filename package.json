@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "gen:types": "npx supabase gen types typescript --project-id \"PROJECT_REF\" --schema public > database.types.ts"
+    "gen:types": "npx supabase gen types typescript --project-id \"PROJECT_REF\" --schema public > database.types.ts",
+    "check-env": "node scripts/check-env.js",
+    "migration:show": "node scripts/show-migration.js",
+    "migration:verify": "node scripts/verify-migration.js"
   },
   "dependencies": {
     "@clerk/backend": "^1.33.1",
