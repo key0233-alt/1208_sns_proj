@@ -147,7 +147,15 @@
     @apply bg-background text-foreground;
     font-family: var(--instagram-font-family);
   }
-  main {
-    @apply max-w-7xl mx-auto pt-16 px-4;
+  /* main 스타일은 app/(main)/layout.tsx에서 개별적으로 관리 */
+}
+
+/* Shimmer 애니메이션 (Skeleton UI용) */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
   }
 }

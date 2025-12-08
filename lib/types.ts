@@ -170,11 +170,49 @@ export interface PaginationParams {
 }
 
 /**
+ * 댓글 + User 정보 타입
+ * API에서 반환되는 댓글 데이터 구조
+ */
+export interface CommentWithUser {
+  /** 댓글 ID (UUID) */
+  id: string;
+  /** 게시물 ID (UUID) */
+  post_id: string;
+  /** 작성자 User ID (UUID) */
+  user_id: string;
+  /** 댓글 내용 */
+  content: string;
+  /** 생성 시간 (ISO 8601) */
+  created_at: string;
+  /** 수정 시간 (ISO 8601) */
+  updated_at: string;
+  /** 작성자 이름 */
+  user_name: string;
+  /** 작성자 Clerk ID */
+  user_clerk_id: string;
+}
+
+/**
+ * PostStats + User 정보 타입
+ * API에서 반환되는 게시물 데이터 구조
+ */
+export interface PostStatsWithUser extends PostStats {
+  /** 작성자 이름 */
+  user_name: string;
+  /** 작성자 Clerk ID */
+  user_clerk_id: string;
+  /** 최신 댓글 2개 */
+  comments: CommentWithUser[];
+  /** 현재 사용자의 좋아요 상태 (선택사항) */
+  is_liked?: boolean;
+}
+
+/**
  * 게시물 목록 응답 타입
  */
 export interface PostListResponse {
   /** 게시물 목록 */
-  posts: PostStats[];
+  posts: PostStatsWithUser[];
   /** 전체 개수 */
   total: number;
   /** 다음 페이지 존재 여부 */

@@ -32,6 +32,7 @@
 Next.js 15, Clerk, Supabase를 활용한 모던 SaaS 애플리케이션 템플릿입니다.
 
 **핵심 특징:**
+
 - ✨ Next.js 15 + React 19 최신 기능 활용
 - 🔐 Clerk와 Supabase 네이티브 통합 (2025년 권장 방식)
 - 🎨 Tailwind CSS v4 + shadcn/ui
@@ -72,12 +73,14 @@ Next.js 15, Clerk, Supabase를 활용한 모던 SaaS 애플리케이션 템플�
 ## 주요 기능
 
 ### 🔐 인증 시스템
+
 - Clerk를 통한 안전한 사용자 인증
 - 소셜 로그인 지원 (Google 등)
 - Clerk 사용자 자동으로 Supabase DB에 동기화
 - 한국어 UI 지원
 
 ### 🗄️ 데이터베이스 통합
+
 - Clerk 토큰 기반 Supabase 인증 (네이티브 통합, JWT 템플릿 불필요)
 - 환경별 Supabase 클라이언트 분리:
   - Client Component용 (`useClerkSupabaseClient`)
@@ -86,12 +89,14 @@ Next.js 15, Clerk, Supabase를 활용한 모던 SaaS 애플리케이션 템플�
 - SQL 마이그레이션 시스템
 
 ### 🎨 UI/UX
+
 - shadcn/ui 기반 모던 컴포넌트
 - 완전한 반응형 디자인
 - 다크/라이트 모드 지원 가능
 - 접근성 준수 (WCAG)
 
 ### 🏗️ 아키텍처
+
 - Server Actions 우선 사용
 - 타입 안전성 보장
 - 모듈화된 코드 구조
@@ -147,10 +152,12 @@ npm install -g pnpm
 **간단 요약:**
 
 1. **Clerk Dashboard**:
+
    - **Integrations** → **Supabase** → **"Activate Supabase integration"** 클릭
    - 표시되는 **Clerk domain** 복사 (예: `your-app-12.clerk.accounts.dev`)
 
 2. **Supabase Dashboard**:
+
    - **Authentication** → **Providers** → **Third-Party Auth** 섹션
    - **"Add Provider"** 클릭
    - Provider Name: `Clerk`
@@ -188,6 +195,7 @@ Instagram 클론 SNS 프로젝트의 게시물 이미지를 저장할 버킷을 
 4. **"Create bucket"** 클릭
 
 **버킷 설정:**
+
 - 이름: `posts`
 - 공개 읽기: 활성화 (모든 사용자가 게시물 이미지 조회 가능)
 - 파일 크기 제한: 5MB (PRD.md 기준)
@@ -219,6 +227,7 @@ Instagram 클론 SNS 프로젝트의 데이터베이스 스키마를 적용합�
 5. 성공 메시지 확인 (`Success. No rows returned`)
 
 **생성되는 테이블:**
+
 - `users`: Clerk 사용자와 동기화되는 사용자 정보 테이블
 - `posts`: 게시물 테이블 (이미지 URL, 캡션)
 - `likes`: 좋아요 테이블
@@ -226,10 +235,12 @@ Instagram 클론 SNS 프로젝트의 데이터베이스 스키마를 적용합�
 - `follows`: 팔로우 테이블
 
 **생성되는 뷰:**
+
 - `post_stats`: 게시물 통계 (좋아요 수, 댓글 수)
 - `user_stats`: 사용자 통계 (게시물 수, 팔로워 수, 팔로잉 수)
 
 **생성되는 트리거:**
+
 - `handle_updated_at`: posts와 comments 테이블의 `updated_at` 자동 업데이트
 
 **5-2. 기본 스키마 적용 (기존 프로젝트용)**
@@ -243,6 +254,7 @@ Instagram 클론 SNS 프로젝트의 데이터베이스 스키마를 적용합�
 5. 성공 메시지 확인 (`Success. No rows returned`)
 
 **생성되는 테이블:**
+
 - `users`: Clerk 사용자와 동기화되는 사용자 정보 테이블
 
 **5-3. 공식 문서 예제용 테이블 생성 (선택사항)**
@@ -305,6 +317,7 @@ cp .env.example .env.local
 
 1. [Clerk Dashboard](https://dashboard.clerk.com/) → **API Keys** 메뉴
 2. 다음 값들을 복사하여 `.env.local` 파일에 입력:
+
    ```env
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    CLERK_SECRET_KEY="sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -312,8 +325,9 @@ cp .env.example .env.local
    NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL="/"
    NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL="/"
    ```
-   
+
    **주의사항:**
+
    - `CLERK_SECRET_KEY`는 **"Secret key"**를 복사해야 합니다 (Publishable key가 아님)
    - 키 형식: `sk_test_...` 또는 `sk_live_...`로 시작
    - 환경 변수 설정 후 개발 서버를 재시작해야 합니다
@@ -322,18 +336,20 @@ cp .env.example .env.local
 
 1. [Supabase Dashboard](https://supabase.com/dashboard) → **Settings** → **API**
 2. 다음 값들을 복사하여 `.env.local` 파일에 입력:
+
    ```env
    NEXT_PUBLIC_SUPABASE_URL="https://xxxxxxxxxxxxx.supabase.co"
    NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
    SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
    NEXT_PUBLIC_STORAGE_BUCKET="posts"
    ```
-   
+
    **참고**: SNS 프로젝트에서는 `NEXT_PUBLIC_STORAGE_BUCKET`을 `posts`로 설정합니다. 기존 프로젝트의 경우 `uploads`를 사용할 수 있습니다.
 
 > **⚠️ 주의**: `CLERK_SECRET_KEY`와 `SUPABASE_SERVICE_ROLE_KEY`는 절대 공개하지 마세요!
-> 
+>
 > **참고**: 환경 변수에 대한 자세한 설명은 다음 문서를 참고하세요:
+>
 > - [`docs/ENV_SETUP.md`](./docs/ENV_SETUP.md) - 전체 환경 변수 설정 가이드
 > - [`docs/SUPABASE_ENV_VARS.md`](./docs/SUPABASE_ENV_VARS.md) - Supabase 환경 변수 상세 설명
 
@@ -399,6 +415,7 @@ pnpm dev
 4. 자세한 해결 방법은 [`docs/ENV_SETUP.md`](./docs/ENV_SETUP.md#문제-해결)를 참고하세요.
 
 **테스트 페이지:**
+
 - `/instruments`: Supabase 공식 문서 예제 (데이터 조회)
 - `/auth-test`: Clerk + Supabase 인증 통합 테스트
 - `/storage-test`: Supabase Storage 업로드 테스트
@@ -408,14 +425,17 @@ pnpm dev
 데이터베이스 마이그레이션이 올바르게 적용되었는지 확인하는 방법:
 
 1. **마이그레이션 파일 적용:**
+
    - Supabase Dashboard → **SQL Editor** → `supabase/migrations/20251208142214_create_sns_schema.sql` 실행
    - Supabase Dashboard → **SQL Editor** → `supabase/migrations/20251208142252_create_posts_storage_bucket.sql` 실행
 
 2. **테이블 생성 확인:**
+
    - Supabase Dashboard → **Table Editor**에서 다음 테이블 확인:
      - `users`, `posts`, `likes`, `comments`, `follows`
 
 3. **Views 및 Triggers 확인:**
+
    - Supabase Dashboard → **Database** → **Views**: `post_stats`, `user_stats`
    - Supabase Dashboard → **Database** → **Triggers**: `set_updated_at` (posts, comments)
 
@@ -447,12 +467,11 @@ pnpm lint
 프로젝트에 이미 Clerk 한국어 로컬라이제이션이 적용되어 있습니다. `app/layout.tsx`의 `ClerkProvider`에서 `koKR` locale이 설정되어 있습니다.
 
 **기본 설정:**
-```tsx
-import { koKR } from '@clerk/localizations';
 
-<ClerkProvider localization={koKR}>
-  {/* ... */}
-</ClerkProvider>
+```tsx
+import { koKR } from "@clerk/localizations";
+
+<ClerkProvider localization={koKR}>{/* ... */}</ClerkProvider>;
 ```
 
 **커스터마이징:**
