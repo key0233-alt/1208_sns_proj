@@ -164,6 +164,39 @@ npm install -g pnpm
 
 #### 4. Supabase Storage 생성 및 설정
 
+**4-1. SNS 프로젝트용 posts 버킷 생성 (필수)**
+
+Instagram 클론 SNS 프로젝트의 게시물 이미지를 저장할 버킷을 생성합니다:
+
+**방법 1: 마이그레이션 파일 사용 (권장)**
+
+1. Supabase Dashboard → **SQL Editor** 메뉴
+2. **"New query"** 클릭
+3. `supabase/migrations/20251208142252_create_posts_storage_bucket.sql` 파일 내용을 복사하여 붙여넣기
+4. **"Run"** 클릭하여 실행
+5. 성공 메시지 확인
+
+**방법 2: Supabase Dashboard 사용**
+
+1. Supabase Dashboard → **Storage** 메뉴
+2. **"New bucket"** 클릭
+3. 버킷 정보 입력:
+   - **Name**: `posts`
+   - **Public bucket**: ✅ 체크 (공개 읽기)
+   - **File size limit**: `5242880` (5MB)
+   - **Allowed MIME types**: `image/jpeg, image/png, image/webp, image/gif`
+4. **"Create bucket"** 클릭
+
+**버킷 설정:**
+- 이름: `posts`
+- 공개 읽기: 활성화 (모든 사용자가 게시물 이미지 조회 가능)
+- 파일 크기 제한: 5MB (PRD.md 기준)
+- 허용 파일 타입: 이미지 파일만 (JPEG, PNG, WebP, GIF)
+
+**4-2. 기존 uploads 버킷 생성 (기존 프로젝트용)**
+
+기존 프로젝트에서 사용하던 `uploads` 버킷을 생성하는 경우:
+
 1. Supabase Dashboard → **Storage** 메뉴
 2. **"New bucket"** 클릭
 3. 버킷 정보 입력:
@@ -175,7 +208,33 @@ npm install -g pnpm
 
 #### 5. 데이터베이스 스키마 적용
 
-**5-1. 기본 스키마 적용**
+**5-1. SNS 스키마 적용 (필수)**
+
+Instagram 클론 SNS 프로젝트의 데이터베이스 스키마를 적용합니다:
+
+1. Supabase Dashboard → **SQL Editor** 메뉴
+2. **"New query"** 클릭
+3. `supabase/migrations/20251208142214_create_sns_schema.sql` 파일 내용을 복사하여 붙여넣기
+4. **"Run"** 클릭하여 실행
+5. 성공 메시지 확인 (`Success. No rows returned`)
+
+**생성되는 테이블:**
+- `users`: Clerk 사용자와 동기화되는 사용자 정보 테이블
+- `posts`: 게시물 테이블 (이미지 URL, 캡션)
+- `likes`: 좋아요 테이블
+- `comments`: 댓글 테이블
+- `follows`: 팔로우 테이블
+
+**생성되는 뷰:**
+- `post_stats`: 게시물 통계 (좋아요 수, 댓글 수)
+- `user_stats`: 사용자 통계 (게시물 수, 팔로워 수, 팔로잉 수)
+
+**생성되는 트리거:**
+- `handle_updated_at`: posts와 comments 테이블의 `updated_at` 자동 업데이트
+
+**5-2. 기본 스키마 적용 (기존 프로젝트용)**
+
+기존 `setup_schema.sql`을 사용하는 경우:
 
 1. Supabase Dashboard → **SQL Editor** 메뉴
 2. **"New query"** 클릭
@@ -186,7 +245,7 @@ npm install -g pnpm
 **생성되는 테이블:**
 - `users`: Clerk 사용자와 동기화되는 사용자 정보 테이블
 
-**5-2. 공식 문서 예제용 테이블 생성 (선택사항)**
+**5-3. 공식 문서 예제용 테이블 생성 (선택사항)**
 
 `/instruments` 페이지를 테스트하려면 다음 SQL을 실행하세요:
 
@@ -228,38 +287,55 @@ cd saas-template
 pnpm install
 ```
 
-**6-2. .env 파일 생성**
+**6-2. .env.local 파일 생성**
 
 ```bash
-cp .env.example .env
+# Windows
+copy .env.example .env.local
+
+# macOS/Linux
+cp .env.example .env.local
 ```
 
-**6-3. Supabase 환경 변수 설정**
+> **참고**: Next.js는 `.env.local` 파일을 자동으로 로드합니다. `.env` 파일도 사용 가능하지만, `.env.local`이 우선순위가 높습니다.
 
-1. Supabase Dashboard → **Settings** → **API**
-2. 다음 값들을 복사하여 `.env` 파일에 입력:
+**6-3. Clerk 환경 변수 설정 (필수)**
+
+**중요**: `CLERK_SECRET_KEY`가 설정되지 않으면 "Clerk Secret Key is invalid" 에러가 발생합니다.
+
+1. [Clerk Dashboard](https://dashboard.clerk.com/) → **API Keys** 메뉴
+2. 다음 값들을 복사하여 `.env.local` 파일에 입력:
    ```env
-   NEXT_PUBLIC_SUPABASE_URL="<Project URL>"
-   NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon public key>"
-   SUPABASE_SERVICE_ROLE_KEY="<service_role secret key>"
-   NEXT_PUBLIC_STORAGE_BUCKET="uploads"
-   ```
-
-> **⚠️ 주의**: `service_role` 키는 모든 RLS를 우회하는 관리자 권한이므로 절대 공개하지 마세요!
-> 
-> **참고**: 환경 변수에 대한 자세한 설명은 [`docs/SUPABASE_ENV_VARS.md`](./docs/SUPABASE_ENV_VARS.md)를 참고하세요.
-
-**6-4. Clerk 환경 변수 설정**
-
-1. Clerk Dashboard → **API Keys**
-2. 다음 값들을 복사하여 `.env` 파일에 입력:
-   ```env
-   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="<Publishable Key>"
-   CLERK_SECRET_KEY="<Secret Key>"
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+   CLERK_SECRET_KEY="sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
    NEXT_PUBLIC_CLERK_SIGN_IN_URL="/sign-in"
    NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL="/"
    NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL="/"
    ```
+   
+   **주의사항:**
+   - `CLERK_SECRET_KEY`는 **"Secret key"**를 복사해야 합니다 (Publishable key가 아님)
+   - 키 형식: `sk_test_...` 또는 `sk_live_...`로 시작
+   - 환경 변수 설정 후 개발 서버를 재시작해야 합니다
+
+**6-4. Supabase 환경 변수 설정**
+
+1. [Supabase Dashboard](https://supabase.com/dashboard) → **Settings** → **API**
+2. 다음 값들을 복사하여 `.env.local` 파일에 입력:
+   ```env
+   NEXT_PUBLIC_SUPABASE_URL="https://xxxxxxxxxxxxx.supabase.co"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   NEXT_PUBLIC_STORAGE_BUCKET="posts"
+   ```
+   
+   **참고**: SNS 프로젝트에서는 `NEXT_PUBLIC_STORAGE_BUCKET`을 `posts`로 설정합니다. 기존 프로젝트의 경우 `uploads`를 사용할 수 있습니다.
+
+> **⚠️ 주의**: `CLERK_SECRET_KEY`와 `SUPABASE_SERVICE_ROLE_KEY`는 절대 공개하지 마세요!
+> 
+> **참고**: 환경 변수에 대한 자세한 설명은 다음 문서를 참고하세요:
+> - [`docs/ENV_SETUP.md`](./docs/ENV_SETUP.md) - 전체 환경 변수 설정 가이드
+> - [`docs/SUPABASE_ENV_VARS.md`](./docs/SUPABASE_ENV_VARS.md) - Supabase 환경 변수 상세 설명
 
 #### 7. Cursor MCP 설정 (선택사항)
 
@@ -299,16 +375,54 @@ Cursor를 완전히 종료하고 다시 실행하여 MCP 서버 설정을 적용
 
 #### 8. 개발 서버 실행
 
+환경 변수 설정이 완료되었으면 개발 서버를 실행합니다:
+
 ```bash
 pnpm dev
 ```
 
 브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 확인합니다.
 
+**⚠️ 에러 발생 시:**
+
+**"Clerk Secret Key is invalid" 에러가 발생하는 경우:**
+
+1. `.env.local` 파일이 프로젝트 루트에 있는지 확인
+2. `CLERK_SECRET_KEY`가 올바르게 설정되었는지 확인:
+   - Clerk Dashboard → API Keys → **"Secret key"** 복사 (Publishable key가 아님)
+   - 키 형식: `sk_test_...` 또는 `sk_live_...`로 시작해야 함
+3. 개발 서버를 완전히 종료하고 다시 시작:
+   ```bash
+   # Ctrl+C로 서버 종료 후
+   pnpm dev
+   ```
+4. 자세한 해결 방법은 [`docs/ENV_SETUP.md`](./docs/ENV_SETUP.md#문제-해결)를 참고하세요.
+
 **테스트 페이지:**
 - `/instruments`: Supabase 공식 문서 예제 (데이터 조회)
 - `/auth-test`: Clerk + Supabase 인증 통합 테스트
 - `/storage-test`: Supabase Storage 업로드 테스트
+
+**마이그레이션 적용 확인:**
+
+데이터베이스 마이그레이션이 올바르게 적용되었는지 확인하는 방법:
+
+1. **마이그레이션 파일 적용:**
+   - Supabase Dashboard → **SQL Editor** → `supabase/migrations/20251208142214_create_sns_schema.sql` 실행
+   - Supabase Dashboard → **SQL Editor** → `supabase/migrations/20251208142252_create_posts_storage_bucket.sql` 실행
+
+2. **테이블 생성 확인:**
+   - Supabase Dashboard → **Table Editor**에서 다음 테이블 확인:
+     - `users`, `posts`, `likes`, `comments`, `follows`
+
+3. **Views 및 Triggers 확인:**
+   - Supabase Dashboard → **Database** → **Views**: `post_stats`, `user_stats`
+   - Supabase Dashboard → **Database** → **Triggers**: `set_updated_at` (posts, comments)
+
+4. **Storage 버킷 확인:**
+   - Supabase Dashboard → **Storage**에서 `posts` 버킷 확인
+
+> **자세한 검증 가이드**: [`docs/MIGRATION_VERIFICATION.md`](./docs/MIGRATION_VERIFICATION.md)를 참고하세요.
 
 ### 개발 명령어
 
