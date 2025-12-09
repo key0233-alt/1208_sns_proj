@@ -47,7 +47,7 @@ interface PostCardProps {
  *
  * @param post - 게시물 데이터 (PostStatsWithUser 타입)
  */
-export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
+function PostCard({ post, allPosts, onDelete }: PostCardProps) {
   const { user } = useUser();
   const supabase = useClerkSupabaseClient();
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -228,7 +228,13 @@ export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
       setIsMenuOpen(false);
     } catch (error) {
       console.error("Post delete error:", error);
-      alert("게시물 삭제 중 오류가 발생했습니다.");
+      
+      // 네트워크 에러 확인
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        alert("네트워크 연결을 확인해주세요.");
+      } else {
+        alert("게시물 삭제 중 오류가 발생했습니다.");
+      }
     } finally {
       setIsDeleting(false);
     }

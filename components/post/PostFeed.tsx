@@ -51,7 +51,12 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
         const response = await fetch(`/api/posts?${params.toString()}`);
 
         if (!response.ok) {
-          throw new Error("게시물을 불러오는데 실패했습니다.");
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage =
+            errorData.error ||
+            errorData.message ||
+            "게시물을 불러오는데 실패했습니다.";
+          throw new Error(errorMessage);
         }
 
         const data: PostListResponse = await response.json();
@@ -66,7 +71,15 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
         setOffset(currentOffset + limit);
       } catch (err) {
         console.error("Failed to load posts:", err);
-        setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+        let errorMessage = "알 수 없는 오류가 발생했습니다.";
+        
+        if (err instanceof TypeError && err.message.includes("fetch")) {
+          errorMessage = "네트워크 연결을 확인해주세요.";
+        } else if (err instanceof Error) {
+          errorMessage = err.message;
+        }
+        
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }

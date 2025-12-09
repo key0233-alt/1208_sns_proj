@@ -81,8 +81,10 @@ export default function LikeButton({
           // 실패 시 롤백
           setLiked(!newLiked);
           setLikesCount(likesCount);
-          const error = await response.json();
-          console.error("Failed to like:", error);
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.error || errorData.message || "좋아요 처리에 실패했습니다.";
+          console.error("Failed to like:", errorMessage);
+          alert(errorMessage);
         } else {
           // 성공 시 콜백 호출
           onLikeChange?.(newLiked, optimisticCount);
@@ -97,8 +99,10 @@ export default function LikeButton({
           // 실패 시 롤백
           setLiked(!newLiked);
           setLikesCount(likesCount);
-          const error = await response.json();
-          console.error("Failed to unlike:", error);
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.error || errorData.message || "좋아요 취소에 실패했습니다.";
+          console.error("Failed to unlike:", errorMessage);
+          alert(errorMessage);
         } else {
           // 성공 시 콜백 호출
           onLikeChange?.(newLiked, optimisticCount);
@@ -109,6 +113,13 @@ export default function LikeButton({
       setLiked(!newLiked);
       setLikesCount(likesCount);
       console.error("Like error:", error);
+      
+      // 네트워크 에러 확인
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        alert("네트워크 연결을 확인해주세요.");
+      } else {
+        alert("좋아요 처리 중 오류가 발생했습니다.");
+      }
     } finally {
       setIsLoading(false);
       setTimeout(() => setIsAnimating(false), 150);
