@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import type { PostStatsWithUser } from "@/lib/types";
 
 /**
@@ -150,6 +151,132 @@ export async function GET(
     });
   } catch (error) {
     console.error("[Post Detail] API error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 게시물 삭제 API
+ *
+ * DELETE /api/posts/[postId]
+ * - 게시물 삭제 (본인만 가능)
+ * - Supabase Storage에서 이미지 삭제
+ * - posts 테이블에서 게시물 삭제 (CASCADE로 관련 데이터 자동 삭제)
+ * - 인증 검증 (Clerk)
+ *
+ * @example
+ * DELETE /api/posts/xxx-xxx-xxx
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    // Clerk 인증 확인
+    const { userId: clerkUserId } = await auth();
+
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { postId } = await params;
+    const supabase = await createClient();
+
+    // Clerk userId로 Supabase users 테이블에서 user_id 찾기
+    const { data: currentUserData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkUserId)
+      .single();
+
+    if (userError || !currentUserData) {
+      console.error("User lookup error:", userError);
+      return NextResponse.json(
+        { error: "User not found in database" },
+        { status: 404 }
+      );
+    }
+
+    // 게시물 정보 조회 (작성자 확인 및 이미지 URL 가져오기)
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .select("id, user_id, image_url")
+      .eq("id", postId)
+      .single();
+
+    if (postError || !postData) {
+      console.error("Post query error:", postError);
+      return NextResponse.json(
+        { error: "Post not found", details: postError?.message },
+        { status: 404 }
+      );
+    }
+
+    // 본인 게시물인지 확인
+    if (postData.user_id !== currentUserData.id) {
+      return NextResponse.json(
+        { error: "You can only delete your own posts" },
+        { status: 403 }
+      );
+    }
+
+    // Service Role 클라이언트로 Storage 삭제 (RLS 우회)
+    let serviceRoleSupabase;
+    try {
+      serviceRoleSupabase = getServiceRoleClient();
+    } catch (error) {
+      console.error("[Post Delete] Service Role client error:", error);
+      return NextResponse.json(
+        {
+          error: "Storage service configuration error",
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+        { status: 500 }
+      );
+    }
+
+    // Storage에서 이미지 삭제
+    // image_url에서 파일 경로 추출 (예: https://xxx.supabase.co/storage/v1/object/public/posts/user_id/filename.jpg)
+    const imageUrl = postData.image_url;
+    const urlParts = imageUrl.split("/posts/");
+    if (urlParts.length > 1) {
+      const filePath = `posts/${urlParts[1]}`;
+      const { error: storageError } = await serviceRoleSupabase.storage
+        .from("posts")
+        .remove([filePath]);
+
+      if (storageError) {
+        console.error("[Post Delete] Storage delete error:", storageError);
+        // Storage 삭제 실패해도 게시물은 삭제 진행 (이미지가 없어도 게시물 삭제는 가능)
+      }
+    }
+
+    // posts 테이블에서 게시물 삭제 (CASCADE로 likes, comments 자동 삭제)
+    const { error: deleteError } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", postId);
+
+    if (deleteError) {
+      console.error("Post delete error:", deleteError);
+      return NextResponse.json(
+        { error: "Failed to delete post", details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: "Post deleted successfully",
+    });
+  } catch (error) {
+    console.error("[Post Delete] API error:", error);
     return NextResponse.json(
       {
         error: "Internal server error",

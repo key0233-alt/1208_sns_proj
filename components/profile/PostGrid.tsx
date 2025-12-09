@@ -32,6 +32,22 @@ export default function PostGrid({ userId }: PostGridProps) {
   const [posts, setPosts] = useState<PostStatsWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // 게시물 삭제 핸들러
+  const handlePostDelete = useCallback(
+    (postId: string) => {
+      // 목록에서 제거
+      setPosts((prev) => prev.filter((p) => p.post_id !== postId));
+      // 모달이 열려있고 삭제된 게시물이면 모달 닫기
+      if (selectedPostId === postId) {
+        setIsModalOpen(false);
+        setSelectedPostId(null);
+      }
+      // 목록 다시 로드 (통계 업데이트를 위해)
+      loadPosts();
+    },
+    [selectedPostId, loadPosts]
+  );
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -161,7 +177,12 @@ export default function PostGrid({ userId }: PostGridProps) {
         <PostModal
           postId={selectedPostId}
           open={isModalOpen}
-          onOpenChange={setIsModalOpen}
+          onOpenChange={(open) => {
+            setIsModalOpen(open);
+            if (!open) {
+              setSelectedPostId(null);
+            }
+          }}
           onPostIdChange={(newPostId) => {
             setSelectedPostId(newPostId);
           }}

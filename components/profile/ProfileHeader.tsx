@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { UserAvatar } from "@clerk/nextjs";
 import type { UserStats } from "@/lib/types";
+import FollowButton from "./FollowButton";
 
 interface ProfileHeaderProps {
   user: UserStats & { is_following?: boolean };
@@ -33,50 +34,12 @@ export default function ProfileHeader({
   user: initialUser,
   isOwnProfile,
 }: ProfileHeaderProps) {
-  const [isFollowing, setIsFollowing] = useState(initialUser.is_following || false);
   const [followersCount, setFollowersCount] = useState(initialUser.followers_count || 0);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // 팔로우 버튼 클릭 핸들러
-  const handleFollowClick = async () => {
-    if (isOwnProfile || isLoading) return;
-
-    setIsLoading(true);
-    const wasFollowing = isFollowing;
-
-    // 낙관적 업데이트
-    setIsFollowing(!wasFollowing);
-    setFollowersCount((prev) => (wasFollowing ? prev - 1 : prev + 1));
-
-    try {
-      const method = wasFollowing ? "DELETE" : "POST";
-      const response = await fetch("/api/follows", {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          followingId: initialUser.user_id,
-        }),
-      });
-
-      if (!response.ok) {
-        // 실패 시 롤백
-        setIsFollowing(wasFollowing);
-        setFollowersCount((prev) => (wasFollowing ? prev + 1 : prev - 1));
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || "팔로우 처리에 실패했습니다.");
-        return;
-      }
-    } catch (error) {
-      // 에러 시 롤백
-      setIsFollowing(wasFollowing);
-      setFollowersCount((prev) => (wasFollowing ? prev + 1 : prev - 1));
-      console.error("Follow error:", error);
-      alert("팔로우 처리 중 오류가 발생했습니다.");
-    } finally {
-      setIsLoading(false);
-    }
+  // 팔로우 상태 변경 핸들러 (FollowButton에서 호출)
+  const handleFollowChange = (isFollowing: boolean) => {
+    // 팔로워 수 낙관적 업데이트
+    setFollowersCount((prev) => (isFollowing ? prev + 1 : prev - 1));
   };
 
   return (
@@ -112,19 +75,11 @@ export default function ProfileHeader({
               </button>
             ) : (
               // 다른 사람 프로필: 팔로우/팔로잉 버튼
-              <button
-                type="button"
-                onClick={handleFollowClick}
-                disabled={isLoading}
-                className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors disabled:opacity-50 ${
-                  isFollowing
-                    ? "bg-white border border-[#DBDBDB] text-[#262626] hover:border-red-500 hover:text-red-500"
-                    : "bg-[#0095f6] text-white hover:bg-[#0095f6]/90"
-                }`}
-                aria-label={isFollowing ? "언팔로우" : "팔로우"}
-              >
-                {isLoading ? "처리 중..." : isFollowing ? "팔로잉" : "팔로우"}
-              </button>
+              <FollowButton
+                userId={initialUser.user_id}
+                initialIsFollowing={initialUser.is_following || false}
+                onFollowChange={handleFollowChange}
+              />
             )}
           </div>
 

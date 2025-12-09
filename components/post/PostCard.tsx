@@ -19,6 +19,7 @@ import {
   Send,
   Bookmark,
   MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
 import type { PostStatsWithUser, CommentWithUser } from "@/lib/types";
@@ -28,10 +29,17 @@ import LikeButton from "./LikeButton";
 import CommentForm from "@/components/comment/CommentForm";
 import CommentList from "@/components/comment/CommentList";
 import PostModal from "./PostModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface PostCardProps {
   post: PostStatsWithUser;
   allPosts?: PostStatsWithUser[]; // 이전/다음 네비게이션용 (선택사항)
+  onDelete?: (postId: string) => void; // 삭제 성공 시 콜백
 }
 
 /**
@@ -39,7 +47,7 @@ interface PostCardProps {
  *
  * @param post - 게시물 데이터 (PostStatsWithUser 타입)
  */
-export default function PostCard({ post, allPosts }: PostCardProps) {
+export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
   const { user } = useUser();
   const supabase = useClerkSupabaseClient();
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -51,7 +59,11 @@ export default function PostCard({ post, allPosts }: PostCardProps) {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalPostId, setModalPostId] = useState<string>(post.post_id);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const lastTapRef = useRef<number>(0);
+  const menuRef = useRef<HTMLDivElement>(null);
   const captionMaxLength = 100; // 2줄 정도의 길이
 
   // 현재 사용자 ID 조회 (본인 댓글 확인용)
@@ -171,6 +183,55 @@ export default function PostCard({ post, allPosts }: PostCardProps) {
     setCommentsCount((prev) => Math.max(0, prev - 1));
   }, []);
 
+  // 본인 게시물인지 확인
+  const isOwnPost = currentUserId === post.user_id;
+
+  // 메뉴 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isMenuOpen]);
+
+  // 게시물 삭제 핸들러
+  const handleDelete = useCallback(async () => {
+    if (!isOwnPost || isDeleting) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/posts/${post.post_id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        alert(errorData.error || "게시물 삭제에 실패했습니다.");
+        return;
+      }
+
+      // 성공 시 콜백 호출
+      if (onDelete) {
+        onDelete(post.post_id);
+      }
+
+      // 다이얼로그 닫기
+      setShowDeleteDialog(false);
+      setIsMenuOpen(false);
+    } catch (error) {
+      console.error("Post delete error:", error);
+      alert("게시물 삭제 중 오류가 발생했습니다.");
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [post.post_id, isOwnPost, isDeleting, onDelete]);
+
   return (
     <article className="bg-white border border-[#DBDBDB] rounded-sm mb-4">
       {/* 헤더 */}
@@ -193,18 +254,38 @@ export default function PostCard({ post, allPosts }: PostCardProps) {
           </Link>
         </div>
         {/* 시간 */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 relative">
           <time className="text-xs text-[#8e8e8e]">
             {formatRelativeTime(post.created_at)}
           </time>
-          {/* ⋯ 메뉴 (추후 구현) */}
-          <button
-            type="button"
-            className="p-1 hover:opacity-50 transition-opacity"
-            aria-label="더보기 메뉴"
-          >
-            <MoreHorizontal className="w-5 h-5 text-[#262626]" />
-          </button>
+          {/* ⋯ 메뉴 */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="p-1 hover:opacity-50 transition-opacity"
+              aria-label="더보기 메뉴"
+            >
+              <MoreHorizontal className="w-5 h-5 text-[#262626]" />
+            </button>
+
+            {/* 메뉴 드롭다운 */}
+            {isMenuOpen && isOwnPost && (
+              <div className="absolute right-0 top-full mt-1 bg-white border border-[#DBDBDB] rounded-md shadow-lg z-50 min-w-[160px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteDialog(true);
+                    setIsMenuOpen(false);
+                  }}
+                  className="w-full px-4 py-3 text-sm text-red-500 hover:bg-[#FAFAFA] transition-colors flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  삭제
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -353,6 +434,37 @@ export default function PostCard({ post, allPosts }: PostCardProps) {
         }}
         allPosts={allPosts}
       />
+
+      {/* 삭제 확인 다이얼로그 */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>게시물 삭제</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-[#262626]">
+              이 게시물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteDialog(false)}
+                className="px-4 py-2 text-sm font-semibold text-[#262626] hover:opacity-50 transition-opacity"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="px-4 py-2 text-sm font-semibold text-red-500 hover:opacity-70 transition-opacity disabled:opacity-50"
+              >
+                {isDeleting ? "삭제 중..." : "삭제"}
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </article>
   );
 }

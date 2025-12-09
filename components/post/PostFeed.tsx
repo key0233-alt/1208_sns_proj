@@ -140,11 +140,21 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
     );
   }
 
+  // 게시물 삭제 핸들러
+  const handlePostDelete = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.post_id !== postId));
+  }, []);
+
   return (
     <div>
       {/* 게시물 목록 */}
       {posts.map((post) => (
-        <PostCard key={post.post_id} post={post} allPosts={posts} />
+        <PostCard
+          key={post.post_id}
+          post={post}
+          allPosts={posts}
+          onDelete={handlePostDelete}
+        />
       ))}
 
       {/* 로딩 상태 */}
