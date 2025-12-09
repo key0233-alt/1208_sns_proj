@@ -34,7 +34,7 @@ interface NavItem {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const navItems: NavItem[] = [

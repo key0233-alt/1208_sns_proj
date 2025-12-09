@@ -36,29 +36,69 @@ export default function PostGrid({ userId }: PostGridProps) {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 게시물 로드
+  // 게시물 로드 (모든 게시물을 가져오기 위해 여러 번 호출)
   const loadPosts = useCallback(async () => {
     try {
       setError(null);
-      const params = new URLSearchParams({
-        limit: "100", // 프로필에서는 모든 게시물 로드
-        offset: "0",
-        userId: userId,
-      });
+      setLoading(true);
+      const allPosts: PostStatsWithUser[] = [];
+      let offset = 0;
+      const limit = 50; // API 제한: 최대 50개
+      let hasMore = true;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      const response = await fetch(`/api/posts?${params.toString()}`);
+      // 모든 게시물을 가져올 때까지 반복
+      while (hasMore) {
+        try {
+          const params = new URLSearchParams({
+            limit: limit.toString(),
+            offset: offset.toString(),
+            userId: userId,
+          });
 
-      if (!response.ok) {
-        const errorMessage = await extractErrorMessage(response);
-        throw new Error(errorMessage);
+          const response = await fetch(`/api/posts?${params.toString()}`, {
+            signal: AbortSignal.timeout(30000), // 30초 타임아웃
+          });
+
+          if (!response.ok) {
+            const errorMessage = await extractErrorMessage(response);
+            throw new Error(errorMessage);
+          }
+
+          const data: PostListResponse = await response.json();
+          allPosts.push(...data.posts);
+          
+          hasMore = data.hasMore;
+          offset += limit;
+          retryCount = 0; // 성공 시 재시도 카운터 리셋
+        } catch (fetchError) {
+          // 네트워크 에러 또는 타임아웃인 경우 재시도
+          if (
+            (fetchError instanceof TypeError && fetchError.message.includes("fetch")) ||
+            fetchError instanceof Error && fetchError.name === "TimeoutError"
+          ) {
+            retryCount++;
+            if (retryCount <= maxRetries) {
+              console.warn(`[PostGrid] Fetch failed, retrying (${retryCount}/${maxRetries})...`);
+              await new Promise((resolve) => setTimeout(resolve, 1000 * retryCount)); // 지수 백오프
+              continue; // 재시도
+            }
+          }
+          // 재시도 실패 또는 다른 에러인 경우 throw
+          throw fetchError;
+        }
       }
 
-      const data: PostListResponse = await response.json();
-      setPosts(data.posts);
+      setPosts(allPosts);
+      setError(null);
     } catch (err) {
-      console.error("Failed to load posts:", err);
+      console.error("[PostGrid] Failed to load posts:", err);
       const errorMessage = getUserFriendlyErrorMessage(err);
       setError(errorMessage);
+      // 에러 발생 시 기존 게시물은 유지하지 않고 빈 배열로 설정
+      // (부분 로드된 데이터로 인한 혼란 방지)
+      setPosts([]);
     } finally {
       setLoading(false);
     }

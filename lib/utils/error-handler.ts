@@ -35,10 +35,42 @@ export async function extractErrorMessage(
   response: Response
 ): Promise<string> {
   try {
-    const data: ApiError = await response.json();
-    return data.error || data.message || data.details || "알 수 없는 오류가 발생했습니다.";
-  } catch {
+    // 응답 본문이 있는지 확인
+    const contentType = response.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return getHttpErrorMessage(response.status);
+    }
+
+    // 응답 본문 읽기
+    const responseText = await response.clone().text();
+    
+    // 빈 응답인 경우
+    if (!responseText || responseText.trim().length === 0) {
+      return getHttpErrorMessage(response.status);
+    }
+
+    // JSON 파싱
+    const data: ApiError = JSON.parse(responseText);
+    
+    // 에러 메시지 추출
+    if (data.error && data.details) {
+      return `${data.error}: ${data.details}`;
+    }
+    if (data.error) {
+      return data.error;
+    }
+    if (data.message) {
+      return data.message;
+    }
+    if (data.details) {
+      return data.details;
+    }
+    
+    // 빈 객체인 경우
+    return getHttpErrorMessage(response.status);
+  } catch (error) {
     // JSON 파싱 실패 시 HTTP 상태 메시지 사용
+    console.error("[extractErrorMessage] Failed to parse error response:", error);
     return getHttpErrorMessage(response.status);
   }
 }

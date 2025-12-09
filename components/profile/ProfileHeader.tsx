@@ -15,7 +15,9 @@
 "use client";
 
 import { useState } from "react";
-import { UserAvatar } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { UserAvatar, useClerk } from "@clerk/nextjs";
+import { LogOut } from "lucide-react";
 import type { UserStats } from "@/lib/types";
 import FollowButton from "./FollowButton";
 
@@ -35,11 +37,23 @@ export default function ProfileHeader({
   isOwnProfile,
 }: ProfileHeaderProps) {
   const [followersCount, setFollowersCount] = useState(initialUser.followers_count || 0);
+  const { signOut } = useClerk();
+  const router = useRouter();
 
   // 팔로우 상태 변경 핸들러 (FollowButton에서 호출)
   const handleFollowChange = (isFollowing: boolean) => {
     // 팔로워 수 낙관적 업데이트
     setFollowersCount((prev) => (isFollowing ? prev + 1 : prev - 1));
+  };
+
+  // 로그아웃 핸들러
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      router.push("/");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -64,15 +78,26 @@ export default function ProfileHeader({
 
             {/* 버튼 영역 */}
             {isOwnProfile ? (
-              // 본인 프로필: 프로필 편집 버튼 (1차 제외, UI만)
-              <button
-                type="button"
-                className="px-4 py-1.5 text-sm font-semibold border border-[#DBDBDB] rounded-md text-[#262626] hover:bg-[#FAFAFA] transition-colors"
-                disabled
-                aria-label="프로필 편집"
-              >
-                프로필 편집
-              </button>
+              // 본인 프로필: 프로필 편집 버튼 + 로그아웃 버튼
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="px-4 py-1.5 text-sm font-semibold border border-[#DBDBDB] rounded-md text-[#262626] hover:bg-[#FAFAFA] transition-colors"
+                  disabled
+                  aria-label="프로필 편집"
+                >
+                  프로필 편집
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="px-4 py-1.5 text-sm font-semibold border border-[#DBDBDB] rounded-md text-red-600 hover:bg-red-50 transition-colors flex items-center gap-2"
+                  aria-label="로그아웃"
+                >
+                  <LogOut className="w-4 h-4" />
+                  로그아웃
+                </button>
+              </div>
             ) : (
               // 다른 사람 프로필: 팔로우/팔로잉 버튼
               <FollowButton

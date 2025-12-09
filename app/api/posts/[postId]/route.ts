@@ -162,6 +162,129 @@ export async function GET(
 }
 
 /**
+ * 게시물 수정 API
+ *
+ * PATCH /api/posts/[postId]
+ * - 게시물 캡션 수정 (본인만 가능)
+ * - 인증 검증 (Clerk)
+ *
+ * Body:
+ * - caption: 캡션 내용 (최대 2,200자, null 가능)
+ *
+ * @example
+ * PATCH /api/posts/xxx-xxx-xxx
+ * Body: { "caption": "수정된 캡션" }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ postId: string }> }
+) {
+  try {
+    // Clerk 인증 확인
+    const { userId: clerkUserId } = await auth();
+
+    if (!clerkUserId) {
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
+    }
+
+    const { postId } = await params;
+    const body = await request.json();
+    const { caption } = body;
+
+    // 캡션 길이 검증
+    if (caption !== null && caption !== undefined) {
+      if (typeof caption !== "string") {
+        return NextResponse.json(
+          { error: "캡션은 문자열이어야 합니다." },
+          { status: 400 }
+        );
+      }
+      if (caption.length > 2200) {
+        return NextResponse.json(
+          { error: "캡션은 최대 2,200자까지 입력 가능합니다." },
+          { status: 400 }
+        );
+      }
+    }
+
+    const supabase = await createClient();
+
+    // Clerk userId로 Supabase users 테이블에서 user_id 찾기
+    const { data: currentUserData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkUserId)
+      .single();
+
+    if (userError || !currentUserData) {
+      console.error("User lookup error:", userError);
+      return NextResponse.json(
+        { error: getHttpErrorMessage(404) },
+        { status: 404 }
+      );
+    }
+
+    // 게시물 정보 조회 (작성자 확인)
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .select("id, user_id")
+      .eq("id", postId)
+      .single();
+
+    if (postError || !postData) {
+      console.error("Post query error:", postError);
+      return NextResponse.json(
+        { error: getHttpErrorMessage(404) },
+        { status: 404 }
+      );
+    }
+
+    // 본인 게시물인지 확인
+    if (postData.user_id !== currentUserData.id) {
+      return NextResponse.json(
+        { error: getHttpErrorMessage(403) },
+        { status: 403 }
+      );
+    }
+
+    // 게시물 업데이트
+    const { data: updatedPost, error: updateError } = await supabase
+      .from("posts")
+      .update({
+        caption: caption?.trim() || null,
+      })
+      .eq("id", postId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Post update error:", updateError);
+      return NextResponse.json(
+        { error: "게시물 수정에 실패했습니다.", details: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      post: updatedPost,
+    });
+  } catch (error) {
+    console.error("[Post Update] API error:", error);
+    return NextResponse.json(
+      {
+        error: getHttpErrorMessage(500),
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * 게시물 삭제 API
  *
  * DELETE /api/posts/[postId]
@@ -182,7 +305,10 @@ export async function DELETE(
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     const { postId } = await params;
@@ -221,7 +347,7 @@ export async function DELETE(
     // 본인 게시물인지 확인
     if (postData.user_id !== currentUserData.id) {
       return NextResponse.json(
-        { error: "You can only delete your own posts" },
+        { error: getHttpErrorMessage(403) },
         { status: 403 }
       );
     }
@@ -246,7 +372,8 @@ export async function DELETE(
     const imageUrl = postData.image_url;
     const urlParts = imageUrl.split("/posts/");
     if (urlParts.length > 1) {
-      const filePath = `posts/${urlParts[1]}`;
+      // urlParts[1]은 이미 "user_id/filename.jpg" 형식이므로 그대로 사용
+      const filePath = urlParts[1];
       const { error: storageError } = await serviceRoleSupabase.storage
         .from("posts")
         .remove([filePath]);

@@ -20,6 +20,7 @@ import {
   Bookmark,
   MoreHorizontal,
   Trash2,
+  Edit,
 } from "lucide-react";
 import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
 import { extractErrorMessage, getUserFriendlyErrorMessage } from "@/lib/utils/error-handler";
@@ -63,6 +64,9 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editCaption, setEditCaption] = useState(post.caption || "");
+  const [isSaving, setIsSaving] = useState(false);
   const lastTapRef = useRef<number>(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const captionMaxLength = 100; // 2줄 정도의 길이
@@ -104,17 +108,27 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     setCommentsCount(post.comments_count || 0);
   }, [post.comments, post.comments_count]);
 
+  // 편집 모드 진입 시 초기값 설정
+  useEffect(() => {
+    if (isEditing) {
+      setEditCaption(post.caption || "");
+    }
+  }, [isEditing, post.caption]);
+
+  // 현재 표시할 캡션 (편집 중이 아닐 때는 post.caption 사용)
+  const currentCaption = isEditing ? editCaption : (post.caption || "");
+  
   // 캡션 표시 로직 (useMemo로 최적화)
   const shouldTruncateCaption = useMemo(
-    () => isTextTruncated(post.caption, captionMaxLength),
-    [post.caption, captionMaxLength]
+    () => isTextTruncated(currentCaption, captionMaxLength),
+    [currentCaption, captionMaxLength]
   );
   const displayCaption = useMemo(
     () =>
       isCaptionExpanded
-        ? post.caption || ""
-        : truncateText(post.caption, captionMaxLength),
-    [isCaptionExpanded, post.caption, captionMaxLength]
+        ? currentCaption
+        : truncateText(currentCaption, captionMaxLength),
+    [isCaptionExpanded, currentCaption, captionMaxLength]
   );
 
   // 좋아요 상태 변경 핸들러
@@ -245,6 +259,43 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     }
   }, [post.post_id, isOwnPost, isDeleting, onDelete]);
 
+  // 게시물 편집 핸들러
+  const handleEdit = useCallback(async () => {
+    if (!isOwnPost || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/posts/${post.post_id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          caption: editCaption.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await extractErrorMessage(response);
+        alert(errorMessage);
+        return;
+      }
+
+      // 성공 시 편집 모드 종료
+      setIsEditing(false);
+      setIsMenuOpen(false);
+      
+      // 페이지 새로고침하여 변경사항 반영 (피드 동기화를 위해)
+      window.location.reload();
+    } catch (error) {
+      console.error("Post edit error:", error);
+      const errorMessage = getUserFriendlyErrorMessage(error);
+      alert(errorMessage);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [post.post_id, isOwnPost, editCaption, isSaving]);
+
   return (
     <article className="bg-white border border-[#DBDBDB] rounded-sm mb-4">
       {/* 헤더 */}
@@ -296,6 +347,24 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
                 role="menu"
                 aria-label="게시물 메뉴"
               >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(true);
+                    setIsMenuOpen(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setIsMenuOpen(false);
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-sm text-[#262626] hover:bg-[#FAFAFA] transition-colors flex items-center gap-2 focus:outline-none focus:bg-[#FAFAFA]"
+                  role="menuitem"
+                  aria-label="게시물 편집"
+                >
+                  <Edit className="w-4 h-4" />
+                  편집
+                </button>
                 <button
                   type="button"
                   onClick={() => {
@@ -430,25 +499,82 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
         )}
 
         {/* 캡션 */}
-        {post.caption && (
-          <div className="text-sm text-[#262626]">
-            <Link
-              href={`/profile/${post.user_id}`}
-              className="font-semibold hover:opacity-50 transition-opacity mr-2"
-            >
-              {post.user_name}
-            </Link>
-            <span>{displayCaption}</span>
-            {shouldTruncateCaption && !isCaptionExpanded && (
-              <button
-                type="button"
-                onClick={() => setIsCaptionExpanded(true)}
-                className="text-[#8e8e8e] hover:text-[#262626] transition-colors ml-1"
+        {isEditing ? (
+          <div className="text-sm text-[#262626] space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <Link
+                href={`/profile/${post.user_id}`}
+                className="font-semibold hover:opacity-50 transition-opacity"
               >
-                더 보기
-              </button>
-            )}
+                {post.user_name}
+              </Link>
+            </div>
+            <textarea
+              value={editCaption}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value.length <= 2200) {
+                  setEditCaption(value);
+                }
+              }}
+              placeholder="캡션을 입력하세요..."
+              rows={3}
+              className="w-full px-3 py-2 border border-[#DBDBDB] rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-[#0095f6] focus:border-transparent text-sm"
+              maxLength={2200}
+              aria-label="캡션 편집"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-[#8e8e8e]">
+                {editCaption.length} / 2,200
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditCaption(post.caption || "");
+                  }}
+                  className="px-4 py-1.5 text-sm font-semibold text-[#262626] hover:opacity-50 transition-opacity"
+                  disabled={isSaving}
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  disabled={isSaving || editCaption.trim() === (post.caption || "")}
+                  className="px-4 py-1.5 text-sm font-semibold bg-[#0095f6] text-white rounded-md hover:bg-[#0095f6]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "저장 중..." : "저장"}
+                </button>
+              </div>
+            </div>
           </div>
+        ) : (
+          (post.caption || isOwnPost) && (
+            <div className="text-sm text-[#262626]">
+              <Link
+                href={`/profile/${post.user_id}`}
+                className="font-semibold hover:opacity-50 transition-opacity mr-2"
+              >
+                {post.user_name}
+              </Link>
+              {post.caption && (
+                <>
+                  <span>{displayCaption}</span>
+                  {shouldTruncateCaption && !isCaptionExpanded && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCaptionExpanded(true)}
+                      className="text-[#8e8e8e] hover:text-[#262626] transition-colors ml-1"
+                    >
+                      더 보기
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )
         )}
 
         {/* 댓글 목록 */}

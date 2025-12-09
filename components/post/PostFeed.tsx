@@ -84,7 +84,8 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
     setHasMore(true);
     setPosts([]);
     loadPosts(0, true);
-  }, [userId, loadPosts]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]); // loadPosts는 의존성에서 제외 (불필요한 재실행 방지)
 
   // Intersection Observer 설정
   useEffect(() => {

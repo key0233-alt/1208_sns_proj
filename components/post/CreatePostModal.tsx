@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, X } from "lucide-react";
+import { extractErrorMessage } from "@/lib/utils/error-handler";
 
 interface CreatePostModalProps {
   open: boolean;
@@ -157,56 +158,29 @@ export default function CreatePostModal({
       });
 
       if (!response.ok) {
-        // 응답 본문 읽기
-        let responseText = "";
-        let errorData: { error?: string; details?: string; [key: string]: any } | null = null;
+        // 에러 핸들링 유틸리티 사용
+        const errorMessage = await extractErrorMessage(response);
         
-        try {
-          responseText = await response.text();
-        } catch (textError) {
-          console.error("[CreatePostModal] Failed to read response text:", textError);
-          responseText = "";
-        }
-        
-        // JSON 파싱 시도
-        if (responseText && responseText.trim().length > 0) {
+        // 추가 디버깅 정보 (개발 환경)
+        if (process.env.NODE_ENV === "development") {
           try {
-            const parsed = JSON.parse(responseText);
-            // 유효한 에러 객체인지 확인 (빈 객체가 아니고, error 또는 details 속성이 있는 경우)
-            if (
-              parsed &&
-              typeof parsed === "object" &&
-              !Array.isArray(parsed) &&
-              (parsed.error || parsed.details || Object.keys(parsed).length > 0)
-            ) {
-              errorData = parsed;
-            }
-          } catch (parseError) {
-            // JSON 파싱 실패 - 무시하고 텍스트를 사용
-            console.error("[CreatePostModal] Failed to parse error response as JSON:", parseError);
+            const responseText = await response.clone().text();
+            const errorData = responseText ? JSON.parse(responseText) : null;
+            console.error("[CreatePostModal] Upload error:", {
+              status: response.status,
+              statusText: response.statusText,
+              errorMessage,
+              errorData,
+              responseText: responseText.substring(0, 200),
+            });
+          } catch (e) {
+            console.error("[CreatePostModal] Upload error:", {
+              status: response.status,
+              statusText: response.statusText,
+              errorMessage,
+            });
           }
         }
-        
-        // errorData가 없거나 빈 객체인 경우 기본 에러 메시지 생성
-        if (!errorData || (typeof errorData === "object" && Object.keys(errorData).length === 0)) {
-          errorData = {
-            error: "게시물 업로드에 실패했습니다",
-            details: responseText || `HTTP ${response.status} ${response.statusText || "Unknown error"}`,
-          };
-        }
-        
-        // 에러 메시지 구성
-        const errorMessage = errorData.details
-          ? `${errorData.error || "오류"}: ${errorData.details}`
-          : errorData.error || `게시물 업로드에 실패했습니다 (${response.status})`;
-        
-        console.error("[CreatePostModal] Upload error:", {
-          status: response.status,
-          statusText: response.statusText,
-          errorMessage,
-          errorData,
-          responseText: responseText.substring(0, 200),
-        });
         
         throw new Error(errorMessage);
       }
@@ -223,9 +197,21 @@ export default function CreatePostModal({
         fileInputRef.current.value = "";
       }
 
+      // 모달 닫기 및 상태 초기화
+      handleClose();
+      
       // 페이지 새로고침하여 새 게시물 표시
       // router.refresh()는 서버 컴포넌트만 새로고침하므로 클라이언트 컴포넌트도 강제 새로고침
-      window.location.href = "/";
+      // 약간의 지연 후 페이지 새로고침 (모달이 닫힌 후)
+      setTimeout(() => {
+        if (window.location.pathname === "/") {
+          // 이미 홈 페이지에 있으면 새로고침
+          window.location.reload();
+        } else {
+          // 다른 페이지에 있으면 홈으로 이동
+          window.location.href = "/";
+        }
+      }, 100);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "게시물 업로드에 실패했습니다."

@@ -25,7 +25,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
       <Header />
 
       {/* Main Content */}
-      <main className="md:pl-[72px] lg:pl-[244px] pt-[60px] md:pt-0 pb-[50px] md:pb-0 min-h-screen">
+      <main className="md:pl-[72px] lg:pl-[244px] pt-[60px] md:pt-[60px] pb-[50px] md:pb-0 min-h-screen">
         <div className="max-w-[630px] mx-auto px-4">{children}</div>
       </main>
 

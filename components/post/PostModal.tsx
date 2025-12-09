@@ -30,6 +30,7 @@ import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
 import {
   Dialog,
   DialogContent,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import type { PostStatsWithUser, CommentWithUser } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils/format-time";
@@ -355,6 +356,7 @@ export default function PostModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[900px] max-h-[600px] p-0 overflow-hidden flex flex-col">
+        <DialogTitle className="sr-only">게시물 상세</DialogTitle>
         {/* 닫기 버튼 및 네비게이션 */}
         <div className="absolute top-4 left-4 right-4 flex items-center justify-between z-10">
           <div className="flex items-center gap-2">
