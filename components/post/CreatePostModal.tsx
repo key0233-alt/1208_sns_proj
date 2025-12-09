@@ -314,7 +314,12 @@ export default function CreatePostModal({
               <button
                 type="button"
                 onClick={handleRemoveFile}
-                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    handleRemoveFile();
+                  }
+                }}
+                className="absolute top-2 right-2 p-2 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2"
                 aria-label="이미지 제거"
               >
                 <X className="w-4 h-4" />

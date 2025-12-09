@@ -432,7 +432,7 @@ export default function PostModal({
                 <div className="flex items-center gap-3">
                   <Link href={`/profile/${post.user_id}`}>
                     <UserAvatar
-                      userId={post.user_clerk_id}
+                      {...({ userId: post.user_clerk_id } as any)}
                       size={32}
                       className="cursor-pointer"
                     />

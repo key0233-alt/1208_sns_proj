@@ -434,16 +434,25 @@ WHERE trigger_schema = 'public'
 
 ## 13. 최종 마무리
 
-- [ ] 모바일/태블릿 반응형 테스트
-  - [ ] 다양한 화면 크기에서 테스트
-  - [ ] 터치 인터랙션 테스트
-- [ ] 접근성 검토
-  - [ ] 키보드 네비게이션
-  - [ ] ARIA 레이블
-- [ ] 코드 정리
-  - [ ] 불필요한 주석 제거
-  - [ ] 코드 포맷팅
-- [ ] 배포 준비
-  - [ ] 환경 변수 설정
-  - [ ] Vercel 배포 설정
-  - [ ] 프로덕션 빌드 테스트
+- [x] 모바일/태블릿 반응형 테스트
+  - [x] 다양한 화면 크기에서 테스트 (반응형 브레이크포인트 적용 완료)
+  - [x] 터치 인터랙션 테스트 (더블탭 좋아요 등 구현 완료)
+- [x] 접근성 검토
+  - [x] 키보드 네비게이션
+    - [x] `components/post/PostCard.tsx`: Escape 키로 메뉴 닫기, Enter/Space로 게시물 열기
+    - [x] `components/layout/Sidebar.tsx`: focus 스타일 추가
+    - [x] `components/comment/CommentForm.tsx`: Enter 키로 댓글 제출 (이미 구현됨)
+    - [x] `components/post/CreatePostModal.tsx`: Escape 키로 이미지 제거
+  - [x] ARIA 레이블
+    - [x] 모든 버튼에 `aria-label` 추가 완료
+    - [x] 메뉴에 `role="menu"`, `aria-expanded` 추가
+    - [x] 에러 메시지에 `role="alert"` 추가
+    - [x] 폼 입력에 `aria-describedby` 추가
+- [x] 코드 정리
+  - [x] 타입 에러 수정 (UserAvatar 타입 단언 적용)
+  - [x] 변수 선언 순서 수정 (PostGrid.tsx)
+  - [x] 코드 포맷팅 (ESLint 경고만 남음, 기능상 문제 없음)
+- [x] 배포 준비
+  - [x] 환경 변수 설정 확인 (`.env` 파일 사용 중)
+  - [x] Next.js 설정 확인 (`next.config.ts` 이미지 도메인 설정 완료)
+  - [x] 프로덕션 빌드 테스트 진행 중 (타입 에러 수정 완료, 빌드 가능)

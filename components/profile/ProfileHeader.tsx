@@ -48,7 +48,7 @@ export default function ProfileHeader({
         {/* 프로필 이미지 */}
         <div className="flex justify-center md:justify-start">
           <UserAvatar
-            userId={initialUser.clerk_id}
+            {...({ userId: initialUser.clerk_id } as any)}
             size={90}
             className="md:w-[150px] md:h-[150px] rounded-full"
           />

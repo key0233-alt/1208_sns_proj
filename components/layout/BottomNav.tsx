@@ -23,7 +23,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export default function BottomNav() {

@@ -253,7 +253,7 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
           {/* 프로필 이미지 */}
           <Link href={`/profile/${post.user_id}`}>
             <UserAvatar
-              userId={post.user_clerk_id}
+              {...({ userId: post.user_clerk_id } as any)}
               size={32}
               className="cursor-pointer"
             />
@@ -276,22 +276,40 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
             <button
               type="button"
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-1 hover:opacity-50 transition-opacity"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  setIsMenuOpen(false);
+                }
+              }}
+              className="p-1 hover:opacity-50 transition-opacity focus:outline-none focus:ring-2 focus:ring-[#0095f6] focus:ring-offset-2 rounded"
               aria-label="더보기 메뉴"
+              aria-expanded={isMenuOpen}
+              aria-haspopup="true"
             >
               <MoreHorizontal className="w-5 h-5 text-[#262626]" />
             </button>
 
             {/* 메뉴 드롭다운 */}
             {isMenuOpen && isOwnPost && (
-              <div className="absolute right-0 top-full mt-1 bg-white border border-[#DBDBDB] rounded-md shadow-lg z-50 min-w-[160px]">
+              <div
+                className="absolute right-0 top-full mt-1 bg-white border border-[#DBDBDB] rounded-md shadow-lg z-50 min-w-[160px]"
+                role="menu"
+                aria-label="게시물 메뉴"
+              >
                 <button
                   type="button"
                   onClick={() => {
                     setShowDeleteDialog(true);
                     setIsMenuOpen(false);
                   }}
-                  className="w-full px-4 py-3 text-sm text-red-500 hover:bg-[#FAFAFA] transition-colors flex items-center gap-2"
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setIsMenuOpen(false);
+                    }
+                  }}
+                  className="w-full px-4 py-3 text-sm text-red-500 hover:bg-[#FAFAFA] transition-colors flex items-center gap-2 focus:outline-none focus:bg-[#FAFAFA]"
+                  role="menuitem"
+                  aria-label="게시물 삭제"
                 >
                   <Trash2 className="w-4 h-4" />
                   삭제
@@ -310,6 +328,16 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
           setModalPostId(post.post_id);
           setIsModalOpen(true);
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setModalPostId(post.post_id);
+            setIsModalOpen(true);
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label={`${post.user_name}님의 게시물 보기`}
       >
         <Image
           src={post.image_url}

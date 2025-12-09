@@ -121,7 +121,9 @@ export default function CommentForm({
     <div className="border-t border-[#DBDBDB] px-4 py-3">
       {/* 에러 메시지 */}
       {error && (
-        <div className="mb-2 text-sm text-red-500">{error}</div>
+        <div id="comment-error" className="mb-2 text-sm text-red-500" role="alert">
+          {error}
+        </div>
       )}
 
       {/* 댓글 입력 폼 */}
@@ -144,18 +146,21 @@ export default function CommentForm({
           onKeyDown={handleKeyDown}
           placeholder="댓글 달기..."
           rows={1}
-          className="flex-1 resize-none border-none outline-none text-sm text-[#262626] placeholder:text-[#8e8e8e] bg-transparent"
+          className="flex-1 resize-none border-none outline-none text-sm text-[#262626] placeholder:text-[#8e8e8e] bg-transparent focus:outline-none"
           disabled={isSubmitting}
           maxLength={MAX_COMMENT_LENGTH}
+          aria-label="댓글 입력"
+          aria-describedby={error ? "comment-error" : undefined}
         />
         <button
           type="submit"
           disabled={isSubmitDisabled}
-          className={`text-sm font-semibold transition-opacity ${
+          className={`text-sm font-semibold transition-opacity focus:outline-none focus:ring-2 focus:ring-[#0095f6] focus:ring-offset-2 rounded ${
             isSubmitDisabled
               ? "text-[#8e8e8e] cursor-not-allowed"
               : "text-[#0095f6] hover:opacity-70 cursor-pointer"
           }`}
+          aria-label="댓글 게시"
         >
           {isSubmitting ? "게시 중..." : "게시"}
         </button>

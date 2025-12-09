@@ -29,7 +29,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }
 
 export default function Sidebar() {
@@ -91,12 +91,15 @@ export default function Sidebar() {
                 className={`
                   flex items-center gap-4 px-3 py-3 rounded-lg
                   transition-colors duration-200
+                  focus:outline-none focus:ring-2 focus:ring-[#0095f6] focus:ring-offset-2
                   ${
                     isActive
                       ? "font-bold text-[#262626]"
                       : "text-[#262626] hover:bg-gray-50"
                   }
                 `}
+                aria-label={item.label}
+                aria-current={isActive ? "page" : undefined}
               >
                 <Icon
                   className={`w-6 h-6 ${
