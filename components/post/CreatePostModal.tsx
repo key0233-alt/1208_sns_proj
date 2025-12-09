@@ -157,8 +157,58 @@ export default function CreatePostModal({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "게시물 업로드에 실패했습니다.");
+        // 응답 본문 읽기
+        let responseText = "";
+        let errorData: { error?: string; details?: string; [key: string]: any } | null = null;
+        
+        try {
+          responseText = await response.text();
+        } catch (textError) {
+          console.error("[CreatePostModal] Failed to read response text:", textError);
+          responseText = "";
+        }
+        
+        // JSON 파싱 시도
+        if (responseText && responseText.trim().length > 0) {
+          try {
+            const parsed = JSON.parse(responseText);
+            // 유효한 에러 객체인지 확인 (빈 객체가 아니고, error 또는 details 속성이 있는 경우)
+            if (
+              parsed &&
+              typeof parsed === "object" &&
+              !Array.isArray(parsed) &&
+              (parsed.error || parsed.details || Object.keys(parsed).length > 0)
+            ) {
+              errorData = parsed;
+            }
+          } catch (parseError) {
+            // JSON 파싱 실패 - 무시하고 텍스트를 사용
+            console.error("[CreatePostModal] Failed to parse error response as JSON:", parseError);
+          }
+        }
+        
+        // errorData가 없거나 빈 객체인 경우 기본 에러 메시지 생성
+        if (!errorData || (typeof errorData === "object" && Object.keys(errorData).length === 0)) {
+          errorData = {
+            error: "게시물 업로드에 실패했습니다",
+            details: responseText || `HTTP ${response.status} ${response.statusText || "Unknown error"}`,
+          };
+        }
+        
+        // 에러 메시지 구성
+        const errorMessage = errorData.details
+          ? `${errorData.error || "오류"}: ${errorData.details}`
+          : errorData.error || `게시물 업로드에 실패했습니다 (${response.status})`;
+        
+        console.error("[CreatePostModal] Upload error:", {
+          status: response.status,
+          statusText: response.statusText,
+          errorMessage,
+          errorData,
+          responseText: responseText.substring(0, 200),
+        });
+        
+        throw new Error(errorMessage);
       }
 
       // 성공 시 모달 닫기 및 상태 초기화

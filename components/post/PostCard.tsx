@@ -10,20 +10,23 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { UserAvatar } from "@clerk/nextjs";
+import { UserAvatar, useUser } from "@clerk/nextjs";
 import {
   MessageCircle,
   Send,
   Bookmark,
   MoreHorizontal,
 } from "lucide-react";
-import type { PostStatsWithUser } from "@/lib/types";
+import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
+import type { PostStatsWithUser, CommentWithUser } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils/format-time";
 import { truncateText, isTextTruncated } from "@/lib/utils/truncate-text";
 import LikeButton from "./LikeButton";
+import CommentForm from "@/components/comment/CommentForm";
+import CommentList from "@/components/comment/CommentList";
 
 interface PostCardProps {
   post: PostStatsWithUser;
@@ -35,12 +38,54 @@ interface PostCardProps {
  * @param post - 게시물 데이터 (PostStatsWithUser 타입)
  */
 export default function PostCard({ post }: PostCardProps) {
+  const { user } = useUser();
+  const supabase = useClerkSupabaseClient();
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likes_count || 0);
   const [isLiked, setIsLiked] = useState(post.is_liked || false);
   const [showDoubleTapHeart, setShowDoubleTapHeart] = useState(false);
+  const [comments, setComments] = useState<CommentWithUser[]>(post.comments || []);
+  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const lastTapRef = useRef<number>(0);
   const captionMaxLength = 100; // 2줄 정도의 길이
+
+  // 현재 사용자 ID 조회 (본인 댓글 확인용)
+  useEffect(() => {
+    const fetchCurrentUserId = async () => {
+      if (!user?.id) {
+        setCurrentUserId(undefined);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from("users")
+          .select("id")
+          .eq("clerk_id", user.id)
+          .single();
+
+        if (error || !data) {
+          console.error("Failed to fetch current user ID:", error);
+          setCurrentUserId(undefined);
+          return;
+        }
+
+        setCurrentUserId(data.id);
+      } catch (error) {
+        console.error("Error fetching current user ID:", error);
+        setCurrentUserId(undefined);
+      }
+    };
+
+    fetchCurrentUserId();
+  }, [user, supabase]);
+
+  // 댓글 목록 동기화 (post prop 변경 시)
+  useEffect(() => {
+    setComments(post.comments || []);
+    setCommentsCount(post.comments_count || 0);
+  }, [post.comments, post.comments_count]);
 
   // 캡션 표시 로직
   const shouldTruncateCaption = isTextTruncated(post.caption, captionMaxLength);
@@ -106,6 +151,21 @@ export default function PostCard({ post }: PostCardProps) {
     },
     []
   );
+
+  // 댓글 추가 핸들러
+  const handleCommentAdded = useCallback(
+    (newComment: CommentWithUser) => {
+      setComments((prev) => [...prev, newComment]);
+      setCommentsCount((prev) => prev + 1);
+    },
+    []
+  );
+
+  // 댓글 삭제 핸들러
+  const handleCommentDeleted = useCallback((commentId: string) => {
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    setCommentsCount((prev) => Math.max(0, prev - 1));
+  }, []);
 
   return (
     <article className="bg-white border border-[#DBDBDB] rounded-sm mb-4">
@@ -261,37 +321,19 @@ export default function PostCard({ post }: PostCardProps) {
           </div>
         )}
 
-        {/* 댓글 미리보기 */}
-        {post.comments_count > 0 && (
-          <div className="space-y-1">
-            {/* "댓글 N개 모두 보기" 링크 */}
-            {post.comments_count > (post.comments?.length || 0) && (
-              <button
-                type="button"
-                className="text-sm text-[#8e8e8e] hover:text-[#262626] transition-colors"
-                aria-label="댓글 모두 보기"
-              >
-                댓글 {post.comments_count}개 모두 보기
-              </button>
-            )}
-            {/* 최신 댓글 2개 (역순으로 표시: 오래된 것부터) */}
-            {(post.comments || [])
-              .slice()
-              .reverse()
-              .map((comment) => (
-                <div key={comment.id} className="text-sm text-[#262626]">
-                  <Link
-                    href={`/profile/${comment.user_id}`}
-                    className="font-semibold hover:opacity-50 transition-opacity mr-2"
-                  >
-                    {comment.user_name}
-                  </Link>
-                  <span>{comment.content}</span>
-                </div>
-              ))}
-          </div>
-        )}
+        {/* 댓글 목록 */}
+        <CommentList
+          comments={comments}
+          postId={post.post_id}
+          mode="preview"
+          currentUserId={currentUserId}
+          commentsCount={commentsCount}
+          onCommentDeleted={handleCommentDeleted}
+        />
       </div>
+
+      {/* 댓글 입력 폼 */}
+      <CommentForm postId={post.post_id} onCommentAdded={handleCommentAdded} />
     </article>
   );
 }

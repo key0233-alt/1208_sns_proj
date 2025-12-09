@@ -7,14 +7,21 @@ if (process.env.NODE_ENV === "development") {
   
   console.log("[Middleware] CLERK_SECRET_KEY 존재:", !!secretKey);
   if (secretKey) {
-    console.log("[Middleware] CLERK_SECRET_KEY 길이:", secretKey.length, secretKey.length === 51 ? "✅" : "⚠️ (일반적으로 51자)");
+    // Clerk Secret Key는 버전에 따라 길이가 다를 수 있으므로 형식만 확인
+    const isValidFormat = secretKey.startsWith("sk_test_") || secretKey.startsWith("sk_live_");
+    const isValidLength = secretKey.length >= 20; // 최소 길이만 확인
+    console.log("[Middleware] CLERK_SECRET_KEY 형식:", isValidFormat ? "✅" : "⚠️", `(${secretKey.startsWith("sk_") ? "올바른 접두사" : "잘못된 접두사"})`);
+    console.log("[Middleware] CLERK_SECRET_KEY 길이:", secretKey.length, isValidLength ? "✅" : "⚠️");
     console.log("[Middleware] CLERK_SECRET_KEY 시작:", secretKey.substring(0, 20));
     console.log("[Middleware] CLERK_SECRET_KEY 끝:", secretKey.substring(Math.max(0, secretKey.length - 10)));
   }
   
   console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 존재:", !!publishableKey);
   if (publishableKey) {
-    console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 길이:", publishableKey.length, publishableKey.length >= 50 ? "✅" : "⚠️");
+    const isValidFormat = publishableKey.startsWith("pk_test_") || publishableKey.startsWith("pk_live_");
+    const isValidLength = publishableKey.length >= 50;
+    console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 형식:", isValidFormat ? "✅" : "⚠️");
+    console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 길이:", publishableKey.length, isValidLength ? "✅" : "⚠️");
     console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 시작:", publishableKey.substring(0, 20));
   }
 }

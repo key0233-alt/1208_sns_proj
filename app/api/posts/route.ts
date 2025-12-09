@@ -326,7 +326,40 @@ export async function POST(request: NextRequest) {
     }
 
     // Service Role 클라이언트로 Storage 업로드 (RLS 우회)
-    const serviceRoleSupabase = getServiceRoleClient();
+    let serviceRoleSupabase;
+    try {
+      serviceRoleSupabase = getServiceRoleClient();
+    } catch (error) {
+      console.error("[Post Upload] Service Role client error:", error);
+      return NextResponse.json(
+        {
+          error: "Storage service configuration error",
+          details: error instanceof Error ? error.message : "Unknown error",
+        },
+        { status: 500 }
+      );
+    }
+
+    // 버킷 존재 여부 확인 (선택사항, 에러 발생 시 더 명확한 메시지 제공)
+    const { data: buckets, error: bucketError } =
+      await serviceRoleSupabase.storage.listBuckets();
+    
+    if (bucketError) {
+      console.error("[Post Upload] Bucket list error:", bucketError);
+    } else {
+      const postsBucketExists = buckets?.some((b) => b.id === "posts");
+      if (!postsBucketExists) {
+        console.error("[Post Upload] 'posts' bucket not found. Available buckets:", buckets?.map((b) => b.id));
+        return NextResponse.json(
+          {
+            error: "Storage bucket 'posts' not found",
+            details: "Please create the 'posts' bucket in Supabase Dashboard → Storage",
+            availableBuckets: buckets?.map((b) => b.id) || [],
+          },
+          { status: 500 }
+        );
+      }
+    }
 
     // 파일명 생성: {user_id}/{timestamp}-{random}.{ext}
     const fileExt = imageFile.name.split(".").pop() || "jpg";
@@ -335,6 +368,13 @@ export async function POST(request: NextRequest) {
     const fileName = `${userData.id}/${timestamp}-${random}.${fileExt}`;
 
     // Supabase Storage에 이미지 업로드 (posts 버킷)
+    console.log("[Post Upload] Starting upload:", {
+      fileName,
+      fileSize: imageFile.size,
+      fileType: imageFile.type,
+      userId: userData.id,
+    });
+
     const { data: uploadData, error: uploadError } =
       await serviceRoleSupabase.storage
         .from("posts")
@@ -344,12 +384,35 @@ export async function POST(request: NextRequest) {
         });
 
     if (uploadError) {
-      console.error("Storage upload error:", uploadError);
+      console.error("[Post Upload] Storage upload error:", {
+        error: uploadError,
+        code: uploadError.statusCode,
+        message: uploadError.message,
+        fileName,
+      });
+      
+      // 버킷이 없는 경우를 위한 더 자세한 에러 메시지
+      if (uploadError.message?.includes("Bucket not found") || uploadError.statusCode === "404") {
+        return NextResponse.json(
+          {
+            error: "Storage bucket 'posts' not found. Please create the bucket in Supabase Dashboard.",
+            details: uploadError.message,
+          },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json(
-        { error: "Failed to upload image", details: uploadError.message },
+        {
+          error: "Failed to upload image",
+          details: uploadError.message || "Unknown storage error",
+          code: uploadError.statusCode,
+        },
         { status: 500 }
       );
     }
+
+    console.log("[Post Upload] Upload successful:", uploadData);
 
     // Public URL 가져오기
     const {
@@ -384,9 +447,19 @@ export async function POST(request: NextRequest) {
       post: postData,
     });
   } catch (error) {
-    console.error("Post creation error:", error);
+    console.error("[Post Upload] Post creation error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
     return NextResponse.json(
-      { error: "Internal server error" },
+      {
+        error: "Internal server error",
+        details: process.env.NODE_ENV === "development" ? errorMessage : undefined,
+        ...(process.env.NODE_ENV === "development" && errorStack
+          ? { stack: errorStack }
+          : {}),
+      },
       { status: 500 }
     );
   }
