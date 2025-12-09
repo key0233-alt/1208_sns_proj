@@ -109,6 +109,15 @@ export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     ? post.caption || ""
     : truncateText(post.caption, captionMaxLength);
 
+  // 좋아요 상태 변경 핸들러
+  const handleLikeChange = useCallback(
+    (liked: boolean, newCount: number) => {
+      setIsLiked(liked);
+      setLikesCount(newCount);
+    },
+    []
+  );
+
   // 더블탭 좋아요 처리
   const handleDoubleTap = useCallback(async () => {
     if (!isLiked) {
@@ -159,15 +168,6 @@ export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     }
   }, [handleDoubleTap]);
 
-  // 좋아요 상태 변경 핸들러
-  const handleLikeChange = useCallback(
-    (liked: boolean, newCount: number) => {
-      setIsLiked(liked);
-      setLikesCount(newCount);
-    },
-    []
-  );
-
   // 댓글 추가 핸들러
   const handleCommentAdded = useCallback(
     (newComment: CommentWithUser) => {
@@ -188,16 +188,18 @@ export default function PostCard({ post, allPosts, onDelete }: PostCardProps) {
 
   // 메뉴 외부 클릭 시 닫기
   useEffect(() => {
+    if (!isMenuOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
       }
     };
 
-    if (isMenuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [isMenuOpen]);
 
   // 게시물 삭제 핸들러

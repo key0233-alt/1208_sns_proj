@@ -159,3 +159,10 @@
     transform: translateX(100%);
   }
 }
+
+/* Tailwind CSS v4에서 사용할 수 있도록 애니메이션 등록 */
+@layer utilities {
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+}

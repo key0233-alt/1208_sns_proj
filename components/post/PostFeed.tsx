@@ -108,6 +108,11 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
     };
   }, [hasMore, loading, offset, loadPosts]);
 
+  // 게시물 삭제 핸들러 (모든 hooks 이후, early return 이전에 정의)
+  const handlePostDelete = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((p) => p.post_id !== postId));
+  }, []);
+
   // 에러 상태
   if (error && posts.length === 0) {
     return (
@@ -139,11 +144,6 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
       </div>
     );
   }
-
-  // 게시물 삭제 핸들러
-  const handlePostDelete = useCallback((postId: string) => {
-    setPosts((prev) => prev.filter((p) => p.post_id !== postId));
-  }, []);
 
   return (
     <div>
