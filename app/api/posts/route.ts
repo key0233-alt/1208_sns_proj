@@ -35,16 +35,19 @@ export async function GET(request: NextRequest) {
     if (limit < 1 || limit > 50) {
       return NextResponse.json(
         { error: "Limit must be between 1 and 50" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // post_stats 뷰에서 게시물 목록 조회
     let query = supabase
       .from("post_stats")
-      .select("post_id, user_id, image_url, caption, created_at, likes_count, comments_count", {
-        count: "exact",
-      })
+      .select(
+        "post_id, user_id, image_url, caption, created_at, likes_count, comments_count",
+        {
+          count: "exact",
+        },
+      )
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -59,7 +62,7 @@ export async function GET(request: NextRequest) {
       console.error("Posts query error:", postsError);
       return NextResponse.json(
         { error: "Failed to fetch posts", details: postsError.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -84,7 +87,10 @@ export async function GET(request: NextRequest) {
     }
 
     // 사용자 정보를 Map으로 변환 (빠른 조회를 위해)
-    const usersMap = new Map<string, { id: string; clerk_id: string; name: string }>();
+    const usersMap = new Map<
+      string,
+      { id: string; clerk_id: string; name: string }
+    >();
     if (usersData) {
       for (const user of usersData) {
         usersMap.set(user.id, user);
@@ -93,7 +99,7 @@ export async function GET(request: NextRequest) {
 
     // 각 게시물의 최신 댓글 2개 조회
     const postIds = postsData.map((post) => post.post_id);
-    
+
     // 댓글 조회 (users 관계 없이 먼저 조회)
     const { data: commentsData, error: commentsError } = await supabase
       .from("comments")
@@ -118,7 +124,7 @@ export async function GET(request: NextRequest) {
         updated_at: string;
       }>
     >();
-    
+
     if (commentsData) {
       for (const comment of commentsData) {
         const postId = comment.post_id;
@@ -145,7 +151,10 @@ export async function GET(request: NextRequest) {
       .select("id, clerk_id, name")
       .in("id", Array.from(commentUserIds));
 
-    const commentUsersMap = new Map<string, { id: string; clerk_id: string; name: string }>();
+    const commentUsersMap = new Map<
+      string,
+      { id: string; clerk_id: string; name: string }
+    >();
     if (commentUsersData) {
       for (const user of commentUsersData) {
         commentUsersMap.set(user.id, user);
@@ -222,7 +231,7 @@ export async function GET(request: NextRequest) {
     console.error("Posts API error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -261,7 +270,7 @@ export async function POST(request: NextRequest) {
     if (!imageFile) {
       return NextResponse.json(
         { error: "Image file is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -278,7 +287,7 @@ export async function POST(request: NextRequest) {
           error:
             "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -293,7 +302,7 @@ export async function POST(request: NextRequest) {
             1024
           ).toFixed(2)}MB`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -304,7 +313,7 @@ export async function POST(request: NextRequest) {
         {
           error: `Caption exceeds ${MAX_CAPTION_LENGTH} characters limit.`,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -321,7 +330,7 @@ export async function POST(request: NextRequest) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
         { error: "User not found in database" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -336,27 +345,31 @@ export async function POST(request: NextRequest) {
           error: "Storage service configuration error",
           details: error instanceof Error ? error.message : "Unknown error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     // 버킷 존재 여부 확인 (선택사항, 에러 발생 시 더 명확한 메시지 제공)
     const { data: buckets, error: bucketError } =
       await serviceRoleSupabase.storage.listBuckets();
-    
+
     if (bucketError) {
       console.error("[Post Upload] Bucket list error:", bucketError);
     } else {
       const postsBucketExists = buckets?.some((b) => b.id === "posts");
       if (!postsBucketExists) {
-        console.error("[Post Upload] 'posts' bucket not found. Available buckets:", buckets?.map((b) => b.id));
+        console.error(
+          "[Post Upload] 'posts' bucket not found. Available buckets:",
+          buckets?.map((b) => b.id),
+        );
         return NextResponse.json(
           {
             error: "Storage bucket 'posts' not found",
-            details: "Please create the 'posts' bucket in Supabase Dashboard → Storage",
+            details:
+              "Please create the 'posts' bucket in Supabase Dashboard → Storage",
             availableBuckets: buckets?.map((b) => b.id) || [],
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -390,15 +403,19 @@ export async function POST(request: NextRequest) {
         message: uploadError.message,
         fileName,
       });
-      
+
       // 버킷이 없는 경우를 위한 더 자세한 에러 메시지
-      if (uploadError.message?.includes("Bucket not found") || uploadError.statusCode === "404") {
+      if (
+        uploadError.message?.includes("Bucket not found") ||
+        uploadError.statusCode === "404"
+      ) {
         return NextResponse.json(
           {
-            error: "Storage bucket 'posts' not found. Please create the bucket in Supabase Dashboard.",
+            error:
+              "Storage bucket 'posts' not found. Please create the bucket in Supabase Dashboard.",
             details: uploadError.message,
           },
-          { status: 500 }
+          { status: 500 },
         );
       }
 
@@ -408,7 +425,7 @@ export async function POST(request: NextRequest) {
           details: uploadError.message || "Unknown storage error",
           code: uploadError.statusCode,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -417,9 +434,7 @@ export async function POST(request: NextRequest) {
     // Public URL 가져오기
     const {
       data: { publicUrl },
-    } = serviceRoleSupabase.storage
-      .from("posts")
-      .getPublicUrl(fileName);
+    } = serviceRoleSupabase.storage.from("posts").getPublicUrl(fileName);
 
     // posts 테이블에 게시물 데이터 저장
     const { data: postData, error: postError } = await supabase
@@ -438,7 +453,7 @@ export async function POST(request: NextRequest) {
       await serviceRoleSupabase.storage.from("posts").remove([fileName]);
       return NextResponse.json(
         { error: "Failed to create post", details: postError.message },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -455,13 +470,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         error: "Internal server error",
-        details: process.env.NODE_ENV === "development" ? errorMessage : undefined,
+        details:
+          process.env.NODE_ENV === "development" ? errorMessage : undefined,
         ...(process.env.NODE_ENV === "development" && errorStack
           ? { stack: errorStack }
           : {}),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

@@ -27,9 +27,11 @@ import { truncateText, isTextTruncated } from "@/lib/utils/truncate-text";
 import LikeButton from "./LikeButton";
 import CommentForm from "@/components/comment/CommentForm";
 import CommentList from "@/components/comment/CommentList";
+import PostModal from "./PostModal";
 
 interface PostCardProps {
   post: PostStatsWithUser;
+  allPosts?: PostStatsWithUser[]; // 이전/다음 네비게이션용 (선택사항)
 }
 
 /**
@@ -37,7 +39,7 @@ interface PostCardProps {
  *
  * @param post - 게시물 데이터 (PostStatsWithUser 타입)
  */
-export default function PostCard({ post }: PostCardProps) {
+export default function PostCard({ post, allPosts }: PostCardProps) {
   const { user } = useUser();
   const supabase = useClerkSupabaseClient();
   const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
@@ -47,6 +49,8 @@ export default function PostCard({ post }: PostCardProps) {
   const [comments, setComments] = useState<CommentWithUser[]>(post.comments || []);
   const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalPostId, setModalPostId] = useState<string>(post.post_id);
   const lastTapRef = useRef<number>(0);
   const captionMaxLength = 100; // 2줄 정도의 길이
 
@@ -208,6 +212,10 @@ export default function PostCard({ post }: PostCardProps) {
       <div
         className="relative w-full aspect-square bg-[#FAFAFA] cursor-pointer select-none"
         onDoubleClick={handleImageDoubleTap}
+        onClick={() => {
+          setModalPostId(post.post_id);
+          setIsModalOpen(true);
+        }}
       >
         <Image
           src={post.image_url}
@@ -334,6 +342,17 @@ export default function PostCard({ post }: PostCardProps) {
 
       {/* 댓글 입력 폼 */}
       <CommentForm postId={post.post_id} onCommentAdded={handleCommentAdded} />
+
+      {/* 게시물 상세 모달 */}
+      <PostModal
+        postId={modalPostId}
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        onPostIdChange={(newPostId) => {
+          setModalPostId(newPostId);
+        }}
+        allPosts={allPosts}
+      />
     </article>
   );
 }

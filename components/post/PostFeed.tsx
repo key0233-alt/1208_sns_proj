@@ -144,7 +144,7 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
     <div>
       {/* 게시물 목록 */}
       {posts.map((post) => (
-        <PostCard key={post.post_id} post={post} />
+        <PostCard key={post.post_id} post={post} allPosts={posts} />
       ))}
 
       {/* 로딩 상태 */}
