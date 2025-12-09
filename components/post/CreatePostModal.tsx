@@ -53,33 +53,65 @@ export default function CreatePostModal({
   const [caption, setCaption] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // 파일 검증 및 설정 공통 함수
+  const processFile = useCallback((file: File) => {
+    // 파일 타입 검증
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setError("지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF만 가능)");
+      return false;
+    }
+
+    // 파일 크기 검증
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`파일 크기는 최대 5MB까지 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+      return false;
+    }
+
+    setSelectedFile(file);
+    setError(null);
+
+    // 미리보기 URL 생성
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return true;
+  }, []);
 
   // 파일 선택 핸들러
   const handleFileSelect = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
-
-      // 파일 타입 검증
-      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        setError("지원하지 않는 파일 형식입니다. (JPEG, PNG, WebP, GIF만 가능)");
-        return;
-      }
-
-      // 파일 크기 검증
-      if (file.size > MAX_FILE_SIZE) {
-        setError(`파일 크기는 최대 5MB까지 가능합니다. (현재: ${(file.size / 1024 / 1024).toFixed(2)}MB)`);
-        return;
-      }
-
-      setSelectedFile(file);
-      setError(null);
-
-      // 미리보기 URL 생성
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
+      processFile(file);
     },
-    []
+    [processFile]
+  );
+
+  // 드래그 앤 드롭 핸들러
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
+
+      const file = e.dataTransfer.files?.[0];
+      if (!file) return;
+      processFile(file);
+    },
+    [processFile]
   );
 
   // 파일 제거 핸들러
@@ -142,7 +174,8 @@ export default function CreatePostModal({
       }
 
       // 페이지 새로고침하여 새 게시물 표시
-      router.refresh();
+      // router.refresh()는 서버 컴포넌트만 새로고침하므로 클라이언트 컴포넌트도 강제 새로고침
+      window.location.href = "/";
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "게시물 업로드에 실패했습니다."
@@ -184,10 +217,21 @@ export default function CreatePostModal({
         <div className="space-y-4">
           {/* 파일 선택 영역 */}
           {!previewUrl ? (
-            <div className="flex flex-col items-center justify-center border-2 border-dashed border-[#DBDBDB] rounded-lg p-12">
+            <div
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-12 transition-colors ${
+                isDragging
+                  ? "border-[#0095f6] bg-[#0095f6]/5"
+                  : "border-[#DBDBDB]"
+              }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <Upload className="w-12 h-12 text-[#8e8e8e] mb-4" />
               <p className="text-sm text-[#262626] mb-2">
-                사진을 여기에 끌어다 놓으세요
+                {isDragging
+                  ? "여기에 놓으세요"
+                  : "사진을 여기에 끌어다 놓으세요"}
               </p>
               <input
                 ref={fileInputRef}
