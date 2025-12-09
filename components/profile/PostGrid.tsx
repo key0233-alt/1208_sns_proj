@@ -16,6 +16,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Heart, MessageCircle } from "lucide-react";
+import { extractErrorMessage, getUserFriendlyErrorMessage } from "@/lib/utils/error-handler";
 import type { PostStatsWithUser, PostListResponse } from "@/lib/types";
 import PostModal from "@/components/post/PostModal";
 
@@ -64,14 +65,16 @@ export default function PostGrid({ userId }: PostGridProps) {
       const response = await fetch(`/api/posts?${params.toString()}`);
 
       if (!response.ok) {
-        throw new Error("게시물을 불러오는데 실패했습니다.");
+        const errorMessage = await extractErrorMessage(response);
+        throw new Error(errorMessage);
       }
 
       const data: PostListResponse = await response.json();
       setPosts(data.posts);
     } catch (err) {
       console.error("Failed to load posts:", err);
-      setError(err instanceof Error ? err.message : "알 수 없는 오류가 발생했습니다.");
+      const errorMessage = getUserFriendlyErrorMessage(err);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo, memo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { UserAvatar, useUser } from "@clerk/nextjs";
@@ -22,6 +22,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useClerkSupabaseClient } from "@/lib/supabase/clerk-client";
+import { extractErrorMessage, getUserFriendlyErrorMessage } from "@/lib/utils/error-handler";
 import type { PostStatsWithUser, CommentWithUser } from "@/lib/types";
 import { formatRelativeTime } from "@/lib/utils/format-time";
 import { truncateText, isTextTruncated } from "@/lib/utils/truncate-text";
@@ -103,11 +104,18 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     setCommentsCount(post.comments_count || 0);
   }, [post.comments, post.comments_count]);
 
-  // 캡션 표시 로직
-  const shouldTruncateCaption = isTextTruncated(post.caption, captionMaxLength);
-  const displayCaption = isCaptionExpanded
-    ? post.caption || ""
-    : truncateText(post.caption, captionMaxLength);
+  // 캡션 표시 로직 (useMemo로 최적화)
+  const shouldTruncateCaption = useMemo(
+    () => isTextTruncated(post.caption, captionMaxLength),
+    [post.caption, captionMaxLength]
+  );
+  const displayCaption = useMemo(
+    () =>
+      isCaptionExpanded
+        ? post.caption || ""
+        : truncateText(post.caption, captionMaxLength),
+    [isCaptionExpanded, post.caption, captionMaxLength]
+  );
 
   // 좋아요 상태 변경 핸들러
   const handleLikeChange = useCallback(
@@ -143,6 +151,8 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
           // 실패 시 롤백
           setIsLiked(false);
           setLikesCount(likesCount);
+          const errorMessage = await extractErrorMessage(response);
+          console.error("Double tap like error:", errorMessage);
         } else {
           handleLikeChange(optimisticLiked, optimisticCount);
         }
@@ -150,7 +160,7 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
         // 에러 시 롤백
         setIsLiked(false);
         setLikesCount(likesCount);
-        console.error("Double tap like error:", error);
+        console.error("Double tap like error:", getUserFriendlyErrorMessage(error));
       }
     }
   }, [isLiked, likesCount, post.post_id, handleLikeChange]);
@@ -213,8 +223,8 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        alert(errorData.error || "게시물 삭제에 실패했습니다.");
+        const errorMessage = await extractErrorMessage(response);
+        alert(errorMessage);
         return;
       }
 
@@ -228,13 +238,8 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
       setIsMenuOpen(false);
     } catch (error) {
       console.error("Post delete error:", error);
-      
-      // 네트워크 에러 확인
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        alert("네트워크 연결을 확인해주세요.");
-      } else {
-        alert("게시물 삭제 중 오류가 발생했습니다.");
-      }
+      const errorMessage = getUserFriendlyErrorMessage(error);
+      alert(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -476,3 +481,6 @@ function PostCard({ post, allPosts, onDelete }: PostCardProps) {
     </article>
   );
 }
+
+// React.memo로 최적화 (props가 변경되지 않으면 리렌더링 방지)
+export default memo(PostCard);

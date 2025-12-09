@@ -402,16 +402,35 @@ WHERE trigger_schema = 'public'
 
 ## 12. 에러 핸들링 및 최적화
 
-- [ ] 에러 핸들링
-  - [ ] API 에러 처리
-  - [ ] 사용자 친화적 에러 메시지
-  - [ ] 네트워크 에러 처리
-- [ ] 이미지 최적화
-  - [ ] Next.js Image 컴포넌트 사용
-  - [ ] Lazy loading
-- [ ] 성능 최적화
-  - [ ] React.memo 적용 (필요한 컴포넌트)
-  - [ ] useMemo, useCallback 활용
+- [x] 에러 핸들링
+  - [x] API 에러 처리
+    - [x] `app/api/posts/route.ts`: 통합 에러 핸들링 적용
+    - [x] `app/api/likes/route.ts`: 통합 에러 핸들링 적용
+    - [x] `app/api/comments/route.ts`: 통합 에러 핸들링 적용
+    - [x] `app/api/follows/route.ts`: 통합 에러 핸들링 적용
+    - [x] `app/api/posts/[postId]/route.ts`: 통합 에러 핸들링 적용
+  - [x] 사용자 친화적 에러 메시지
+    - [x] `lib/utils/error-handler.ts`의 `getHttpErrorMessage` 함수 활용
+    - [x] 모든 API 라우트에 한국어 에러 메시지 적용
+  - [x] 네트워크 에러 처리
+    - [x] `lib/utils/error-handler.ts`의 `isNetworkError`, `getUserFriendlyErrorMessage` 함수 활용
+    - [x] 클라이언트 컴포넌트에 통합 에러 핸들링 적용
+      - [x] `components/post/PostFeed.tsx`
+      - [x] `components/post/PostCard.tsx`
+      - [x] `components/profile/PostGrid.tsx`
+- [x] 이미지 최적화
+  - [x] Next.js Image 컴포넌트 사용
+    - [x] `components/post/PostCard.tsx`: Image 컴포넌트 사용
+    - [x] `components/profile/PostGrid.tsx`: Image 컴포넌트 사용
+  - [x] Lazy loading
+    - [x] `priority={false}` 설정으로 lazy loading 적용
+    - [x] `sizes` 속성으로 반응형 이미지 최적화
+- [x] 성능 최적화
+  - [x] React.memo 적용 (필요한 컴포넌트)
+    - [x] `components/post/PostCard.tsx`: React.memo 적용
+  - [x] useMemo, useCallback 활용
+    - [x] `components/post/PostCard.tsx`: useMemo로 캡션 처리 최적화
+    - [x] 모든 컴포넌트에서 useCallback으로 핸들러 함수 메모이제이션
 
 ## 13. 최종 마무리
 

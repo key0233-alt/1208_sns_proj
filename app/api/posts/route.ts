@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceRoleClient } from "@/lib/supabase/service-role";
+import { getHttpErrorMessage } from "@/lib/utils/error-handler";
 import type { PostListResponse } from "@/lib/types";
 
 /**
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
     // limit 검증
     if (limit < 1 || limit > 50) {
       return NextResponse.json(
-        { error: "Limit must be between 1 and 50" },
+        { error: "페이지 크기는 1부터 50 사이여야 합니다." },
         { status: 400 },
       );
     }
@@ -61,7 +62,7 @@ export async function GET(request: NextRequest) {
     if (postsError) {
       console.error("Posts query error:", postsError);
       return NextResponse.json(
-        { error: "Failed to fetch posts", details: postsError.message },
+        { error: "게시물을 불러오는데 실패했습니다.", details: postsError.message },
         { status: 500 },
       );
     }
@@ -230,7 +231,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Posts API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: getHttpErrorMessage(500) },
       { status: 500 },
     );
   }
@@ -258,7 +259,10 @@ export async function POST(request: NextRequest) {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     // FormData 파싱
@@ -269,7 +273,7 @@ export async function POST(request: NextRequest) {
     // 이미지 파일 검증
     if (!imageFile) {
       return NextResponse.json(
-        { error: "Image file is required" },
+        { error: "이미지 파일이 필요합니다." },
         { status: 400 },
       );
     }
@@ -284,8 +288,7 @@ export async function POST(request: NextRequest) {
     if (!allowedMimeTypes.includes(imageFile.type)) {
       return NextResponse.json(
         {
-          error:
-            "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.",
+          error: "지원하지 않는 파일 형식입니다. JPEG, PNG, WebP, GIF만 가능합니다.",
         },
         { status: 400 },
       );
@@ -296,7 +299,7 @@ export async function POST(request: NextRequest) {
     if (imageFile.size > MAX_FILE_SIZE) {
       return NextResponse.json(
         {
-          error: `File size exceeds 5MB limit. Current size: ${(
+          error: `파일 크기가 5MB를 초과합니다. 현재 크기: ${(
             imageFile.size /
             1024 /
             1024
@@ -311,7 +314,7 @@ export async function POST(request: NextRequest) {
     if (caption && caption.length > MAX_CAPTION_LENGTH) {
       return NextResponse.json(
         {
-          error: `Caption exceeds ${MAX_CAPTION_LENGTH} characters limit.`,
+          error: `캡션은 최대 ${MAX_CAPTION_LENGTH}자까지 입력 가능합니다.`,
         },
         { status: 400 },
       );
@@ -329,7 +332,7 @@ export async function POST(request: NextRequest) {
     if (userError || !userData) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
-        { error: "User not found in database" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 },
       );
     }
@@ -342,8 +345,8 @@ export async function POST(request: NextRequest) {
       console.error("[Post Upload] Service Role client error:", error);
       return NextResponse.json(
         {
-          error: "Storage service configuration error",
-          details: error instanceof Error ? error.message : "Unknown error",
+          error: getHttpErrorMessage(500),
+          details: error instanceof Error ? error.message : undefined,
         },
         { status: 500 },
       );
@@ -364,9 +367,8 @@ export async function POST(request: NextRequest) {
         );
         return NextResponse.json(
           {
-            error: "Storage bucket 'posts' not found",
-            details:
-              "Please create the 'posts' bucket in Supabase Dashboard → Storage",
+            error: "저장소 버킷을 찾을 수 없습니다.",
+            details: "Supabase 대시보드에서 'posts' 버킷을 생성해주세요.",
             availableBuckets: buckets?.map((b) => b.id) || [],
           },
           { status: 500 },
@@ -411,8 +413,7 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json(
           {
-            error:
-              "Storage bucket 'posts' not found. Please create the bucket in Supabase Dashboard.",
+            error: "저장소 버킷을 찾을 수 없습니다. Supabase 대시보드에서 버킷을 생성해주세요.",
             details: uploadError.message,
           },
           { status: 500 },
@@ -421,8 +422,8 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(
         {
-          error: "Failed to upload image",
-          details: uploadError.message || "Unknown storage error",
+          error: "이미지 업로드에 실패했습니다.",
+          details: uploadError.message || undefined,
           code: uploadError.statusCode,
         },
         { status: 500 },
@@ -452,7 +453,7 @@ export async function POST(request: NextRequest) {
       // 업로드된 파일 삭제 시도 (실패해도 계속 진행)
       await serviceRoleSupabase.storage.from("posts").remove([fileName]);
       return NextResponse.json(
-        { error: "Failed to create post", details: postError.message },
+        { error: "게시물 생성에 실패했습니다.", details: postError.message },
         { status: 500 },
       );
     }
@@ -469,7 +470,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: "Internal server error",
+        error: getHttpErrorMessage(500),
         details:
           process.env.NODE_ENV === "development" ? errorMessage : undefined,
         ...(process.env.NODE_ENV === "development" && errorStack

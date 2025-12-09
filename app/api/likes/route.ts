@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getHttpErrorMessage } from "@/lib/utils/error-handler";
 
 /**
  * 좋아요 추가/제거 API
@@ -26,7 +27,10 @@ export async function POST(request: NextRequest) {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
 
     if (!postId) {
       return NextResponse.json(
-        { error: "postId is required" },
+        { error: "게시물 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
     if (userError || !userData) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
-        { error: "User not found in database" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -71,14 +75,14 @@ export async function POST(request: NextRequest) {
       if (error.code === "23505") {
         // UNIQUE constraint violation
         return NextResponse.json(
-          { error: "Already liked" },
+          { error: "이미 좋아요한 게시물입니다." },
           { status: 409 }
         );
       }
 
       console.error("Like insert error:", error);
       return NextResponse.json(
-        { error: "Failed to add like", details: error.message },
+        { error: "좋아요 추가에 실패했습니다.", details: error.message },
         { status: 500 }
       );
     }
@@ -90,7 +94,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Like API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: getHttpErrorMessage(500) },
       { status: 500 }
     );
   }
@@ -102,7 +106,10 @@ export async function DELETE(request: NextRequest) {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -110,7 +117,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!postId) {
       return NextResponse.json(
-        { error: "postId is required" },
+        { error: "게시물 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -127,7 +134,7 @@ export async function DELETE(request: NextRequest) {
     if (userError || !userData) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
-        { error: "User not found in database" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -142,7 +149,7 @@ export async function DELETE(request: NextRequest) {
     if (error) {
       console.error("Like delete error:", error);
       return NextResponse.json(
-        { error: "Failed to remove like", details: error.message },
+        { error: "좋아요 제거에 실패했습니다.", details: error.message },
         { status: 500 }
       );
     }
@@ -153,7 +160,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Like API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: getHttpErrorMessage(500) },
       { status: 500 }
     );
   }

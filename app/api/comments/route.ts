@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getHttpErrorMessage } from "@/lib/utils/error-handler";
 
 /**
  * 댓글 작성/삭제 API
@@ -30,7 +31,10 @@ export async function POST(request: NextRequest) {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     const body = await request.json();
@@ -39,14 +43,14 @@ export async function POST(request: NextRequest) {
     // 유효성 검증
     if (!post_id) {
       return NextResponse.json(
-        { error: "post_id is required" },
+        { error: "게시물 ID가 필요합니다." },
         { status: 400 }
       );
     }
 
     if (!content || typeof content !== "string" || content.trim().length === 0) {
       return NextResponse.json(
-        { error: "content is required and cannot be empty" },
+        { error: "댓글 내용을 입력해주세요." },
         { status: 400 }
       );
     }
@@ -55,7 +59,7 @@ export async function POST(request: NextRequest) {
     const MAX_COMMENT_LENGTH = 1000;
     if (content.length > MAX_COMMENT_LENGTH) {
       return NextResponse.json(
-        { error: `Comment exceeds maximum length of ${MAX_COMMENT_LENGTH} characters` },
+        { error: `댓글은 최대 ${MAX_COMMENT_LENGTH}자까지 입력 가능합니다.` },
         { status: 400 }
       );
     }
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
     if (postError || !postData) {
       console.error("Post lookup error:", postError);
       return NextResponse.json(
-        { error: "Post not found" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
     if (userError || !userData) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
-        { error: "User not found in database" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -106,7 +110,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Comment insert error:", error);
       return NextResponse.json(
-        { error: "Failed to create comment", details: error.message },
+        { error: "댓글 작성에 실패했습니다.", details: error.message },
         { status: 500 }
       );
     }
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Comment API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: getHttpErrorMessage(500) },
       { status: 500 }
     );
   }
@@ -144,7 +148,10 @@ export async function DELETE(request: NextRequest) {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: getHttpErrorMessage(401) },
+        { status: 401 }
+      );
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -152,7 +159,7 @@ export async function DELETE(request: NextRequest) {
 
     if (!commentId) {
       return NextResponse.json(
-        { error: "commentId is required" },
+        { error: "댓글 ID가 필요합니다." },
         { status: 400 }
       );
     }
@@ -169,7 +176,7 @@ export async function DELETE(request: NextRequest) {
     if (userError || !userData) {
       console.error("User lookup error:", userError);
       return NextResponse.json(
-        { error: "User not found in database" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -184,7 +191,7 @@ export async function DELETE(request: NextRequest) {
     if (commentError || !commentData) {
       console.error("Comment lookup error:", commentError);
       return NextResponse.json(
-        { error: "Comment not found" },
+        { error: getHttpErrorMessage(404) },
         { status: 404 }
       );
     }
@@ -192,7 +199,7 @@ export async function DELETE(request: NextRequest) {
     // 본인 댓글인지 확인
     if (commentData.user_id !== userData.id) {
       return NextResponse.json(
-        { error: "Forbidden: You can only delete your own comments" },
+        { error: getHttpErrorMessage(403) },
         { status: 403 }
       );
     }
@@ -207,7 +214,7 @@ export async function DELETE(request: NextRequest) {
     if (deleteError) {
       console.error("Comment delete error:", deleteError);
       return NextResponse.json(
-        { error: "Failed to delete comment", details: deleteError.message },
+        { error: "댓글 삭제에 실패했습니다.", details: deleteError.message },
         { status: 500 }
       );
     }
@@ -218,7 +225,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Comment API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: getHttpErrorMessage(500) },
       { status: 500 }
     );
   }

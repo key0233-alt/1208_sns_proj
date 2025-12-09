@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import PostCard from "./PostCard";
 import PostCardSkeleton from "./PostCardSkeleton";
+import { extractErrorMessage, getUserFriendlyErrorMessage, isNetworkError } from "@/lib/utils/error-handler";
 import type { PostStatsWithUser, PostListResponse } from "@/lib/types";
 
 interface PostFeedProps {
@@ -51,11 +52,7 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
         const response = await fetch(`/api/posts?${params.toString()}`);
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage =
-            errorData.error ||
-            errorData.message ||
-            "게시물을 불러오는데 실패했습니다.";
+          const errorMessage = await extractErrorMessage(response);
           throw new Error(errorMessage);
         }
 
@@ -71,14 +68,7 @@ export default function PostFeed({ userId }: PostFeedProps = {}) {
         setOffset(currentOffset + limit);
       } catch (err) {
         console.error("Failed to load posts:", err);
-        let errorMessage = "알 수 없는 오류가 발생했습니다.";
-        
-        if (err instanceof TypeError && err.message.includes("fetch")) {
-          errorMessage = "네트워크 연결을 확인해주세요.";
-        } else if (err instanceof Error) {
-          errorMessage = err.message;
-        }
-        
+        const errorMessage = getUserFriendlyErrorMessage(err);
         setError(errorMessage);
       } finally {
         setLoading(false);
