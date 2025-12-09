@@ -103,3 +103,5 @@ CLERK_SECRET_KEY=sk_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 - 자세한 환경 변수 설정: [`docs/ENV_SETUP.md`](docs/ENV_SETUP.md)
 - 문제 해결: [`docs/ENV_SETUP.md#문제-해결`](docs/ENV_SETUP.md#문제-해결)
 
+
+

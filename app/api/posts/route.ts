@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceRoleClient } from "@/lib/supabase/service-role";
 import type { PostListResponse } from "@/lib/types";
 
 /**
@@ -150,6 +152,32 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // 현재 사용자의 좋아요 상태 조회 (인증된 경우만)
+    const { userId: clerkUserId } = await auth();
+    let likedPostIds = new Set<string>();
+
+    if (clerkUserId) {
+      // Clerk userId로 Supabase users 테이블에서 user_id 찾기
+      const { data: currentUserData } = await supabase
+        .from("users")
+        .select("id")
+        .eq("clerk_id", clerkUserId)
+        .single();
+
+      if (currentUserData) {
+        // 현재 사용자가 좋아요한 게시물 ID 목록 조회
+        const { data: likesData } = await supabase
+          .from("likes")
+          .select("post_id")
+          .eq("user_id", currentUserData.id)
+          .in("post_id", postIds);
+
+        if (likesData) {
+          likedPostIds = new Set(likesData.map((like) => like.post_id));
+        }
+      }
+    }
+
     // 응답 데이터 형식 변환
     const posts = postsData.map((post) => {
       const user = usersMap.get(post.user_id);
@@ -178,6 +206,7 @@ export async function GET(request: NextRequest) {
             user_clerk_id: commentUser?.clerk_id || "",
           };
         }),
+        is_liked: likedPostIds.has(post.post_id),
       };
     });
 
@@ -191,6 +220,171 @@ export async function GET(request: NextRequest) {
     } satisfies PostListResponse);
   } catch (error) {
     console.error("Posts API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * 게시물 생성 API
+ *
+ * POST /api/posts
+ * - 이미지 파일 업로드 (Supabase Storage)
+ * - 게시물 데이터 저장 (posts 테이블)
+ * - 인증 검증 (Clerk)
+ *
+ * Body (FormData):
+ * - image: 이미지 파일 (필수, 최대 5MB)
+ * - caption: 캡션 (선택사항, 최대 2,200자)
+ *
+ * @example
+ * POST /api/posts
+ * Body: FormData with image file and optional caption
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // Clerk 인증 확인
+    const { userId: clerkUserId } = await auth();
+
+    if (!clerkUserId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // FormData 파싱
+    const formData = await request.formData();
+    const imageFile = formData.get("image") as File | null;
+    const caption = formData.get("caption") as string | null;
+
+    // 이미지 파일 검증
+    if (!imageFile) {
+      return NextResponse.json(
+        { error: "Image file is required" },
+        { status: 400 }
+      );
+    }
+
+    // 파일 타입 검증
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+    if (!allowedMimeTypes.includes(imageFile.type)) {
+      return NextResponse.json(
+        {
+          error:
+            "Invalid file type. Only JPEG, PNG, WebP, and GIF are allowed.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 파일 크기 검증 (최대 5MB)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (imageFile.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          error: `File size exceeds 5MB limit. Current size: ${(
+            imageFile.size /
+            1024 /
+            1024
+          ).toFixed(2)}MB`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 캡션 길이 검증 (최대 2,200자)
+    const MAX_CAPTION_LENGTH = 2200;
+    if (caption && caption.length > MAX_CAPTION_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `Caption exceeds ${MAX_CAPTION_LENGTH} characters limit.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createClient();
+
+    // Clerk userId로 Supabase users 테이블에서 user_id 찾기
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("id")
+      .eq("clerk_id", clerkUserId)
+      .single();
+
+    if (userError || !userData) {
+      console.error("User lookup error:", userError);
+      return NextResponse.json(
+        { error: "User not found in database" },
+        { status: 404 }
+      );
+    }
+
+    // Service Role 클라이언트로 Storage 업로드 (RLS 우회)
+    const serviceRoleSupabase = getServiceRoleClient();
+
+    // 파일명 생성: {user_id}/{timestamp}-{random}.{ext}
+    const fileExt = imageFile.name.split(".").pop() || "jpg";
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(7);
+    const fileName = `${userData.id}/${timestamp}-${random}.${fileExt}`;
+
+    // Supabase Storage에 이미지 업로드 (posts 버킷)
+    const { data: uploadData, error: uploadError } =
+      await serviceRoleSupabase.storage
+        .from("posts")
+        .upload(fileName, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+    if (uploadError) {
+      console.error("Storage upload error:", uploadError);
+      return NextResponse.json(
+        { error: "Failed to upload image", details: uploadError.message },
+        { status: 500 }
+      );
+    }
+
+    // Public URL 가져오기
+    const {
+      data: { publicUrl },
+    } = serviceRoleSupabase.storage
+      .from("posts")
+      .getPublicUrl(fileName);
+
+    // posts 테이블에 게시물 데이터 저장
+    const { data: postData, error: postError } = await supabase
+      .from("posts")
+      .insert({
+        user_id: userData.id,
+        image_url: publicUrl,
+        caption: caption?.trim() || null,
+      })
+      .select()
+      .single();
+
+    if (postError) {
+      console.error("Post insert error:", postError);
+      // 업로드된 파일 삭제 시도 (실패해도 계속 진행)
+      await serviceRoleSupabase.storage.from("posts").remove([fileName]);
+      return NextResponse.json(
+        { error: "Failed to create post", details: postError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      post: postData,
+    });
+  } catch (error) {
+    console.error("Post creation error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

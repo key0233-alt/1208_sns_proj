@@ -62,3 +62,5 @@ DROP POLICY IF EXISTS "Users can delete own posts" ON storage.objects;
 --   -- 추가: 게시물 소유자 확인 로직 필요
 -- );
 
+
+

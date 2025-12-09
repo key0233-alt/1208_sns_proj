@@ -216,3 +216,5 @@ NEXT_PUBLIC_STORAGE_BUCKET=posts
 - [Supabase 환경 변수 문서](https://supabase.com/docs/guides/getting-started/quickstarts/nextjs#declare-supabase-environment-variables)
 - [Next.js 환경 변수 문서](https://nextjs.org/docs/app/building-your-application/configuring/environment-variables)
 
+
+

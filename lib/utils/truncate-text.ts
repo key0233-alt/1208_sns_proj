@@ -43,3 +43,5 @@ export function isTextTruncated(text: string | null | undefined, maxLength = 100
   return text.length > maxLength;
 }
 
+
+

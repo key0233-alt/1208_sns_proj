@@ -293,3 +293,5 @@ pnpm dev
 - [Supabase SQL Editor 가이드](https://supabase.com/docs/guides/database/tables)
 - [Supabase Storage 가이드](https://supabase.com/docs/guides/storage)
 
+
+

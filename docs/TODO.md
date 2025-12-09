@@ -279,34 +279,34 @@ WHERE trigger_schema = 'public'
 
 ## 4. 좋아요 기능
 
-- [ ] `app/api/likes/route.ts`
-  - [ ] POST: 좋아요 추가
-  - [ ] DELETE: 좋아요 제거
-  - [ ] 인증 검증 (Clerk)
-- [ ] `components/post/LikeButton.tsx`
-  - [ ] 빈 하트 ↔ 빨간 하트 상태 관리
-  - [ ] 클릭 애니메이션 (scale 1.3 → 1)
-  - [ ] 더블탭 좋아요 (모바일, 큰 하트 fade in/out)
-- [ ] PostCard에 LikeButton 통합
-  - [ ] 좋아요 상태 표시
-  - [ ] 좋아요 수 실시간 업데이트
+- [x] `app/api/likes/route.ts`
+  - [x] POST: 좋아요 추가
+  - [x] DELETE: 좋아요 제거
+  - [x] 인증 검증 (Clerk)
+- [x] `components/post/LikeButton.tsx`
+  - [x] 빈 하트 ↔ 빨간 하트 상태 관리
+  - [x] 클릭 애니메이션 (scale 1.3 → 1)
+  - [x] 더블탭 좋아요 (모바일, 큰 하트 fade in/out)
+- [x] PostCard에 LikeButton 통합
+  - [x] 좋아요 상태 표시
+  - [x] 좋아요 수 실시간 업데이트
 
 ## 5. 게시물 작성
 
-- [ ] `components/post/CreatePostModal.tsx`
-  - [ ] Dialog 컴포넌트 사용
-  - [ ] 이미지 미리보기 UI
-  - [ ] 텍스트 입력 필드 (최대 2,200자)
-  - [ ] 파일 선택 버튼
-  - [ ] 업로드 버튼
-- [ ] `app/api/posts/route.ts`
-  - [ ] POST: 게시물 생성
-  - [ ] 이미지 파일 검증 (최대 5MB)
-  - [ ] Supabase Storage 업로드
-  - [ ] posts 테이블에 데이터 저장
-  - [ ] 인증 검증 (Clerk)
-- [ ] Sidebar "만들기" 버튼 연결
-  - [ ] CreatePostModal 열기
+- [x] `components/post/CreatePostModal.tsx`
+  - [x] Dialog 컴포넌트 사용
+  - [x] 이미지 미리보기 UI
+  - [x] 텍스트 입력 필드 (최대 2,200자)
+  - [x] 파일 선택 버튼
+  - [x] 업로드 버튼
+- [x] `app/api/posts/route.ts`
+  - [x] POST: 게시물 생성
+  - [x] 이미지 파일 검증 (최대 5MB)
+  - [x] Supabase Storage 업로드
+  - [x] posts 테이블에 데이터 저장
+  - [x] 인증 검증 (Clerk)
+- [x] Sidebar "만들기" 버튼 연결
+  - [x] CreatePostModal 열기
 
 ## 6. 댓글 기능
 

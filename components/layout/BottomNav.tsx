@@ -12,10 +12,12 @@
 
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Search, Plus, Heart, User } from "lucide-react";
 import { useUser } from "@clerk/nextjs";
+import CreatePostModal from "@/components/post/CreatePostModal";
 
 interface NavItem {
   href: string;
@@ -27,6 +29,7 @@ interface NavItem {
 export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useUser();
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const navItems: NavItem[] = [
     {
@@ -40,9 +43,13 @@ export default function BottomNav() {
       label: "검색",
     },
     {
-      href: "/create",
+      href: "#",
       icon: Plus,
       label: "만들기",
+      onClick: (e) => {
+        e.preventDefault();
+        setIsCreateModalOpen(true);
+      },
     },
     {
       href: "/activity",
@@ -86,6 +93,12 @@ export default function BottomNav() {
           </Link>
         );
       })}
+
+      {/* 게시물 작성 모달 */}
+      <CreatePostModal
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+      />
     </nav>
   );
 }
