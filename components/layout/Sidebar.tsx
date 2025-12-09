@@ -77,7 +77,11 @@ export default function Sidebar() {
         <nav className="flex flex-col gap-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            // 프로필의 경우 /profile로 시작하는 모든 경로를 활성화
+            const isActive =
+              item.href === "/profile"
+                ? pathname.startsWith("/profile")
+                : pathname === item.href;
 
             return (
               <Link

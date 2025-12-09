@@ -67,7 +67,11 @@ export default function BottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 h-[50px] bg-white border-t border-[#DBDBDB] z-50 flex items-center justify-around">
       {navItems.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href;
+        // 프로필의 경우 /profile로 시작하는 모든 경로를 활성화
+        const isActive =
+          item.href === "/profile"
+            ? pathname.startsWith("/profile")
+            : pathname === item.href;
 
         return (
           <Link

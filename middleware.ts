@@ -1,6 +1,6 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// 환경 변수 확인 (디버깅용)
+// 환경 변수 확인 (디버깅용 - 민감한 정보는 로깅하지 않음)
 if (process.env.NODE_ENV === "development") {
   const secretKey = process.env.CLERK_SECRET_KEY;
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -12,8 +12,7 @@ if (process.env.NODE_ENV === "development") {
     const isValidLength = secretKey.length >= 20; // 최소 길이만 확인
     console.log("[Middleware] CLERK_SECRET_KEY 형식:", isValidFormat ? "✅" : "⚠️", `(${secretKey.startsWith("sk_") ? "올바른 접두사" : "잘못된 접두사"})`);
     console.log("[Middleware] CLERK_SECRET_KEY 길이:", secretKey.length, isValidLength ? "✅" : "⚠️");
-    console.log("[Middleware] CLERK_SECRET_KEY 시작:", secretKey.substring(0, 20));
-    console.log("[Middleware] CLERK_SECRET_KEY 끝:", secretKey.substring(Math.max(0, secretKey.length - 10)));
+    // 보안상 키의 일부를 로깅하지 않음
   }
   
   console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 존재:", !!publishableKey);
@@ -22,7 +21,7 @@ if (process.env.NODE_ENV === "development") {
     const isValidLength = publishableKey.length >= 50;
     console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 형식:", isValidFormat ? "✅" : "⚠️");
     console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 길이:", publishableKey.length, isValidLength ? "✅" : "⚠️");
-    console.log("[Middleware] NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY 시작:", publishableKey.substring(0, 20));
+    // Publishable Key는 공개되어도 괜찮지만, 일관성을 위해 로깅 제거
   }
 }
 
